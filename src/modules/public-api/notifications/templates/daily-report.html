@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8"> <title>Report Giornaliero</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #eeeeee; padding: 20px;">
+    <div style="background-color: #fff; max-width: 500px; margin: 0 auto; padding: 30px; border-top: 5px solid #C4A456; border-radius: 4px;">
+        <h2 style="color: #333; margin-top: 0; font-family: 'Times New Roman', serif;">📊 Report: {{date}}</h2>
+        
+        <table width="100%" style="margin-top: 20px; border-collapse: separate; border-spacing: 0 10px;">
+            <tr>
+                <td style="background-color: #f9f9f9; padding: 15px; border-radius: 4px;">
+                    <span style="font-size: 12px; color: #888; text-transform: uppercase;">Fatturato</span><br>
+                    <span style="font-size: 24px; color: #1a1a1a; font-weight: bold;">{{total_revenue}}</span>
+                </td>
+                <td width="20">&nbsp;</td>
+                <td style="background-color: #f9f9f9; padding: 15px; border-radius: 4px;">
+                    <span style="font-size: 12px; color: #888; text-transform: uppercase;">Ordini</span><br>
+                    <span style="font-size: 24px; color: #1a1a1a; font-weight: bold;">{{total_sales}}</span>
+                </td>
+            </tr>
+        </table>
+
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+             <span style="font-size: 12px; color: #888; text-transform: uppercase;">Nuovi Clienti Acquisiti</span><br>
+             <span style="font-size: 20px; color: #1a1a1a;">{{new_customers}}</span>
+        </div>
+
+        <a href="https://tuo-admin-panel.com" style="display: block; background-color: #1a1a1a; color: #fff; text-align: center; padding: 12px; text-decoration: none; border-radius: 4px; font-size: 14px;">Vai alla Dashboard</a>
+    </div>
+</body>
+</html>

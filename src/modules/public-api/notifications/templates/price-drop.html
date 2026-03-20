@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8"> <title>Prezzo Ribassato</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>body { background-color: #F9F9F7; margin: 0; padding: 0; } img { max-width: 100%; height: auto; }</style>
+</head>
+<body style="margin: 0; padding: 0 !important; background-color: #F9F9F7;">
+    <center style="width: 100%; background-color: #F9F9F7;">
+        <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" class="email-container">
+            <tr><td height="40">&nbsp;</td></tr>
+            <tr><td align="center" style="padding-bottom: 20px;"><img src="https://tuo-bucket.com/logo.png" alt="Meravièn" width="120"></td></tr>
+            <tr>
+                <td style="background-color: #ffffff; padding: 40px; border-radius: 4px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
+                    <h1 style="font-family: 'Playfair Display', serif; font-size: 28px; color: #1a1a1a;">Un piccolo dono per te</h1>
+                    <p style="font-family: 'Montserrat', sans-serif; font-size: 15px; color: #555555; margin-bottom: 30px;">
+                        Abbiamo notato che ti piaceva questo prodotto. Ora puoi averlo ad un prezzo speciale.
+                    </p>
+                    
+                    <a href="{{product_link}}" style="text-decoration: none;">
+                        <img src="{{product_image}}" alt="{{product_name}}" width="300" style="width: 300px; margin: 0 auto; display: block; padding-bottom: 20px;">
+                    </a>
+                    
+                    <div style="font-family: 'Playfair Display', serif; font-size: 20px; color: #1a1a1a; margin-bottom: 5px;">{{product_name}}</div>
+                    
+                    <div style="margin-bottom: 30px;">
+                        <span style="font-family: 'Montserrat', sans-serif; font-size: 16px; color: #999999; text-decoration: line-through; margin-right: 10px;">{{old_price}}</span>
+                        <span style="font-family: 'Montserrat', sans-serif; font-size: 22px; color: #C4A456; font-weight: 600;">{{new_price}}</span>
+                    </div>
+
+                    <a href="{{product_link}}" style="background-color: #C4A456; font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 600; color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 2px; text-transform: uppercase; letter-spacing: 1px; display: inline-block;">
+                        Approfittane ora
+                    </a>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 30px 20px; text-align: center; font-family: 'Montserrat', sans-serif; font-size: 11px; color: #999999;">
+                    <a href="{{unsubscribe_link}}" style="color: #999999; text-decoration: underline;">Disiscriviti</a>
+                </td>
+            </tr>
+            <tr><td height="40">&nbsp;</td></tr>
+        </table>
+    </center>
+</body>
+</html>

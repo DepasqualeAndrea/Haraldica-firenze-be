@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # =================================
+  # REDIS (Cache & Queue)
+  # =================================
+  redis:
+    image: redis:7-alpine
+    container_name: meravien-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - meravien-network
+
+  # =================================
+  # REDIS COMMANDER (GUI per debug)
+  # =================================
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: meravien-redis-commander
+    restart: unless-stopped
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - meravien-network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  meravien-network:
+    driver: bridge

@@ -1,0 +1,106 @@
+{
+    "family": "meravie-backend-production",
+    "taskRoleArn": "arn:aws:iam::684160547814:role/ecsTaskRole",
+    "executionRoleArn": "arn:aws:iam::684160547814:role/ecsTaskExecutionRole",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "512",
+    "memory": "1024",
+    "volumes": [],
+    "containerDefinitions": [
+        {
+            "name": "meravie-backend",
+            "image": "684160547814.dkr.ecr.eu-central-1.amazonaws.com/meravie-backend-production:latest",
+            "cpu": 0,
+            "essential": true,
+            "portMappings": [
+                {
+                    "containerPort": 3000,
+                    "hostPort": 3000,
+                    "protocol": "tcp"
+                }
+            ],
+            "environment": [
+                { "name": "NODE_ENV", "value": "production" },
+                { "name": "PORT", "value": "3000" },
+                { "name": "DB_HOST", "value": "meravie-prod-db.ch26e82m6lh6.eu-central-1.rds.amazonaws.com" },
+                { "name": "DB_PORT", "value": "5432" },
+                { "name": "DB_NAME", "value": "meravie_production" },
+                { "name": "DATABASE_SSL", "value": "true" },
+                { "name": "REDIS_HOST", "value": "meravie-prod-redis.wdlf7i.0001.euc1.cache.amazonaws.com" },
+                { "name": "REDIS_PORT", "value": "6379" },
+                { "name": "REDIS_DB", "value": "0" },
+                { "name": "JWT_EXPIRES_IN", "value": "24h" },
+                { "name": "AUTH_RATE_LIMIT_WINDOW_MS", "value": "900000" },
+                { "name": "AUTH_RATE_LIMIT_MAX_REQUESTS", "value": "20" },
+                { "name": "FRONTEND_URL", "value": "https://meravien.it,https://www.meravien.it" },
+                { "name": "COOKIE_SECURE", "value": "true" },
+                { "name": "COOKIE_SAMESITE", "value": "strict" },
+                { "name": "AWS_REGION", "value": "eu-central-1" },
+                { "name": "AWS_SES_REGION", "value": "eu-central-1" },
+                { "name": "AWS_SES_USE_IAM_ROLE", "value": "true" },
+                { "name": "AWS_S3_BUCKET", "value": "meravien-brt-labels" },
+                { "name": "AWS_S3_BUCKET_LABELS", "value": "meravien-brt-labels" },
+                { "name": "AWS_S3_BUCKET_IMAGES", "value": "meravien-product-images" },
+                { "name": "EMAIL_BRAND_NAME", "value": "Meravien" },
+                { "name": "EMAIL_SUPPORT", "value": "supporto@meravien.com" },
+                { "name": "EMAIL_INFO", "value": "info@meravien.com" },
+                { "name": "EMAIL_ORDERS", "value": "ordini@meravien.com" },
+                { "name": "EMAIL_ADMIN", "value": "amministrazione@meravien.com" },
+                { "name": "BRT_API_URL", "value": "https://api.brt.it/rest/v1" },
+                { "name": "BRT_DEPARTURE_DEPOT", "value": "151" },
+                { "name": "BRT_SENDER_CUSTOMER_CODE", "value": "1512576" },
+                { "name": "BRT_PRICING_CONDITION_CODE", "value": "000" },
+                { "name": "BRT_DELIVERY_FREIGHT_TYPE", "value": "DAP" },
+                { "name": "BRT_AUTO_CREATE_SHIPMENT", "value": "true" },
+                { "name": "BRT_AUTO_CONFIRM", "value": "false" },
+                { "name": "BRT_MANUAL_PICKUP", "value": "true" },
+                { "name": "WAREHOUSE_NAME", "value": "Meravien - Magazzino Tortoreto" },
+                { "name": "WAREHOUSE_COMPANY_NAME", "value": "Meravien S.r.l." },
+                { "name": "WAREHOUSE_STREET", "value": "Via Nazionale 60" },
+                { "name": "WAREHOUSE_CITY", "value": "Tortoreto" },
+                { "name": "WAREHOUSE_POSTAL_CODE", "value": "64018" },
+                { "name": "WAREHOUSE_PROVINCE", "value": "TE" },
+                { "name": "WAREHOUSE_COUNTRY", "value": "IT" },
+                { "name": "WAREHOUSE_PHONE", "value": "+393334037527" },
+                { "name": "WAREHOUSE_EMAIL", "value": "amministrazione@meravien.com" },
+                { "name": "DAILY_SHIPMENT_REPORT_ENABLED", "value": "true" },
+                { "name": "DAILY_SHIPMENT_REPORT_TIME", "value": "18:00" },
+                { "name": "DAILY_SHIPMENT_REPORT_EMAILS", "value": "amministrazione@meravien.com" }
+            ],
+            "secrets": [
+                { "name": "DB_USERNAME", "valueFrom": "arn:aws:secretsmanager:eu-central-1:684160547814:secret:meravie/production/database-WzNZSf:username::" },
+                { "name": "DB_PASSWORD", "valueFrom": "arn:aws:secretsmanager:eu-central-1:684160547814:secret:meravie/production/database-WzNZSf:password::" },
+                { "name": "JWT_SECRET", "valueFrom": "arn:aws:secretsmanager:eu-central-1:684160547814:secret:meravie/production/app-config-pSIXEQ:JWT_SECRET::" },
+                { "name": "STRIPE_SECRET_KEY", "valueFrom": "arn:aws:secretsmanager:eu-central-1:684160547814:secret:meravie/production/stripe-67NAjj:secretKey::" },
+                { "name": "STRIPE_PUBLISHABLE_KEY", "valueFrom": "arn:aws:secretsmanager:eu-central-1:684160547814:secret:meravie/production/stripe-67NAjj:publishableKey::" },
+                { "name": "STRIPE_WEBHOOK_SECRET", "valueFrom": "arn:aws:secretsmanager:eu-central-1:684160547814:secret:meravie/production/stripe-67NAjj:webhookSecret::" },
+                { "name": "EMAIL_PROVIDER", "valueFrom": "arn:aws:secretsmanager:eu-central-1:684160547814:secret:meravie/production/email-H7XUQX:provider::" },
+                { "name": "EMAIL_FROM", "valueFrom": "arn:aws:secretsmanager:eu-central-1:684160547814:secret:meravie/production/email-H7XUQX:from::" },
+                { "name": "EMAIL_FROM_NAME", "valueFrom": "arn:aws:secretsmanager:eu-central-1:684160547814:secret:meravie/production/email-H7XUQX:fromName::" },
+                { "name": "BRT_USER_ID", "valueFrom": "arn:aws:secretsmanager:eu-central-1:684160547814:secret:meravie/production/brt-ZP79uh:username::" },
+                { "name": "BRT_USERNAME", "valueFrom": "arn:aws:secretsmanager:eu-central-1:684160547814:secret:meravie/production/brt-ZP79uh:username::" },
+                { "name": "BRT_PASSWORD", "valueFrom": "arn:aws:secretsmanager:eu-central-1:684160547814:secret:meravie/production/brt-ZP79uh:password::" }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/meravie-backend-production",
+                    "awslogs-create-group": "true",
+                    "awslogs-region": "eu-central-1",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            },
+            "healthCheck": {
+                "command": ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"],
+                "interval": 30,
+                "timeout": 5,
+                "retries": 3,
+                "startPeriod": 90
+            },
+            "mountPoints": [],
+            "volumesFrom": [],
+            "systemControls": []
+        }
+    ]
+}

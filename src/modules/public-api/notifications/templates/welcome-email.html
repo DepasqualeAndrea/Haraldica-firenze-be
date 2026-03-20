@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+    <meta charset="utf-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"> 
+    <meta name="x-apple-disable-message-reformatting"> 
+    <title>Benvenuta in Meravièn</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+    <style>
+        /* RESET CSS */
+        body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+        table { border-collapse: collapse !important; }
+        body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #F9F9F7; }
+
+        /* STILI RESPONSIVE */
+        @media screen and (max-width: 600px) {
+            .email-container { width: 100% !important; }
+            .fluid-img { width: 100% !important; max-width: 100% !important; height: auto !important; }
+            .mobile-padding { padding-left: 20px !important; padding-right: 20px !important; }
+            .header-text { font-size: 32px !important; line-height: 40px !important; }
+        }
+
+        /* DARK MODE SUPPORT */
+        @media (prefers-color-scheme: dark) {
+            /* Forziamo un contenitore chiaro per mantenere il brand identity */
+            .email-bg { background-color: #1a1a1a !important; }
+            .content-bg { background-color: #ffffff !important; }
+            .dark-text-white { color: #ffffff !important; }
+            .dark-border { border-color: #333333 !important; }
+        }
+    </style>
+</head>
+<body width="100%" style="margin: 0; padding: 0 !important; mso-line-height-rule: exactly; background-color: #F9F9F7;" class="email-bg">
+    <center style="width: 100%; background-color: #F9F9F7;" class="email-bg">
+        
+        <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-family: sans-serif;">
+            Il tuo rituale di bellezza inizia qui. Scopri l'arte della bellezza eterna.
+        </div>
+
+        <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; width: 600px; max-width: 600px;" class="email-container">
+            
+            <tr><td height="40" style="font-size: 40px; line-height: 40px;">&nbsp;</td></tr>
+
+            <tr>
+                <td align="center" style="padding: 0 10px 30px 10px;">
+                    <img src="https://tuo-bucket-s3/logo-meravien.png" width="120" height="auto" alt="Meravièn" style="display: block; width: 120px; max-width: 120px; font-family: 'Playfair Display', serif; color: #1a1a1a; font-size: 24px;">
+                </td>
+            </tr>
+
+            <tr>
+                <td class="content-bg" style="background-color: #ffffff; padding: 50px 40px; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        
+                        <tr>
+                            <td align="center" class="header-text" style="font-family: 'Playfair Display', 'Times New Roman', serif; font-size: 36px; line-height: 46px; color: #1a1a1a; font-weight: 400; padding-bottom: 20px;">
+                                L'Arte della<br>
+                                <span style="font-style: italic; color: #C4A456;">Bellezza Eterna</span>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td align="center" class="mobile-padding" style="font-family: 'Montserrat', Helvetica, Arial, sans-serif; font-size: 15px; line-height: 28px; color: #555555; padding-bottom: 30px;">
+                                Ciao {{firstName}},<br><br>
+                                Grazie per esserti unita al mondo Meravièn. Siamo felici di accompagnarti nel tuo nuovo rituale di bellezza.<br><br>
+                                La nostra missione è creare armonia tra ciò che siamo e ciò che la natura ci offre, attraverso prodotti efficaci e lussuosi, senza compromessi.
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td align="center" style="padding-bottom: 40px;">
+                                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                                    <tr>
+                                        <td style="border-radius: 2px; background-color: #C4A456;">
+                                            <a href="{{dashboardLink}}" target="_blank" style="background-color: #C4A456; font-family: 'Montserrat', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 2px; display: inline-block; letter-spacing: 1px; text-transform: uppercase;">
+                                                Scopri la Collezione
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td align="center">
+                                <div style="width: 40px; height: 1px; background-color: #E5E5E5; margin: 0 auto;"></div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <tr>
+                <td style="padding: 30px 20px; text-align: center;">
+                    <p style="font-family: 'Montserrat', Helvetica, Arial, sans-serif; font-size: 11px; line-height: 18px; color: #888888; text-transform: uppercase; letter-spacing: 1px; margin: 0;">
+                        Seguici su
+                    </p>
+                    <div style="padding: 15px 0;">
+                        <a href="#" style="color: #1a1a1a; text-decoration: none; margin: 0 8px; font-family: serif; font-style: italic;">Instagram</a>
+                        <span style="color: #cccccc;">|</span>
+                        <a href="#" style="color: #1a1a1a; text-decoration: none; margin: 0 8px; font-family: serif; font-style: italic;">Facebook</a>
+                    </div>
+                    <p style="font-family: 'Montserrat', Helvetica, Arial, sans-serif; font-size: 11px; line-height: 18px; color: #999999; margin: 0;">
+                        Meravièn Skincare - Via Roma 10, Milano, Italia<br>
+                        <a href="{{unsubscribe_link}}" style="color: #999999; text-decoration: underline;">Disiscriviti</a>
+                    </p>
+                </td>
+            </tr>
+            
+            <tr><td height="40" style="font-size: 40px; line-height: 40px;">&nbsp;</td></tr>
+
+        </table>
+    </center>
+</body>
+</html>

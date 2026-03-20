@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8"> <title>Allerta Scorte</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #fff0f0; padding: 20px;">
+    <div style="background-color: #fff; max-width: 500px; margin: 0 auto; padding: 30px; border-left: 5px solid #d9534f; border-radius: 4px;">
+        <h2 style="color: #d9534f; margin-top: 0;">⚠️ Scorte in Esaurimento</h2>
+        <p style="color: #555;">I seguenti prodotti sono scesi sotto la soglia minima:</p>
+        
+        <table width="100%" cellspacing="0" cellpadding="0">
+            <thead>
+                <tr style="text-align: left; color: #888; font-size: 12px;">
+                    <th style="padding-bottom: 10px;">Prodotto</th>
+                    <th style="padding-bottom: 10px; text-align: right;">Qta Rimanente</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{low_stock_items}}
+            </tbody>
+        </table>
+
+        <br>
+        <a href="https://tuo-admin-panel.com/inventory" style="text-decoration: underline; color: #333; font-size: 14px;">Gestisci Inventario</a>
+    </div>
+</body>
+</html>

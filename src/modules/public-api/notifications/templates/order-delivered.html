@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ordine Consegnato</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #F9F9F7; margin: 0; padding: 0; }
+        @media screen and (max-width: 600px) { .email-container { width: 100% !important; } }
+    </style>
+</head>
+<body style="margin: 0; padding: 0 !important; background-color: #F9F9F7;">
+    <center style="width: 100%; background-color: #F9F9F7;">
+        <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" class="email-container">
+            <tr><td height="40">&nbsp;</td></tr>
+            <tr><td align="center" style="padding-bottom: 20px;"><img src="https://tuo-bucket.com/logo.png" alt="Meravièn" width="120"></td></tr>
+            <tr>
+                <td style="background-color: #ffffff; padding: 50px 40px; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
+                    <table width="100%">
+                        <tr>
+                            <td align="center" style="font-family: 'Playfair Display', serif; font-size: 28px; color: #1a1a1a; padding-bottom: 20px;">
+                                Il tuo ordine è arrivato!
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="center" style="font-family: 'Montserrat', sans-serif; font-size: 15px; line-height: 26px; color: #555555; padding-bottom: 30px;">
+                                Il tuo ordine <strong>#{{orderNumber}}</strong> risulta consegnato.<br><br>
+                                Speriamo che tu sia pronta a scoprire il tuo nuovo rituale di bellezza.<br><br>
+                                Se hai avuto problemi con la consegna, non esitare a contattarci.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="center">
+                                <div style="width: 40px; height: 1px; background-color: #E5E5E5; margin: 0 auto;"></div>
+                            </td>
+                        </tr>
+                        <!-- REVIEW CTA SECTION -->
+                        <tr>
+                            <td align="center" style="padding-top: 35px;">
+                                <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                    <tr>
+                                        <td align="center" style="font-family: 'Playfair Display', serif; font-size: 20px; color: #1a1a1a; padding-bottom: 15px;">
+                                            Ti è piaciuto il tuo acquisto?
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td align="center" style="font-family: 'Montserrat', sans-serif; font-size: 14px; color: #555555; padding-bottom: 25px;">
+                                            La tua opinione è importante per noi e per la community Meravièn.<br>
+                                            Condividi la tua esperienza con una recensione!
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td align="center">
+                                            <a href="{{reviewUrl}}" style="display: inline-block; padding: 14px 40px; background-color: #1a1a1a; color: #ffffff; font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 500; text-decoration: none; letter-spacing: 1px; border-radius: 2px;">
+                                                LASCIA UNA RECENSIONE
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr><td height="40">&nbsp;</td></tr>
+        </table>
+    </center>
+</body>
+</html>

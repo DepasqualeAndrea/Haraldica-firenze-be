@@ -1,0 +1,34 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "S3AccessMeravieBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:AbortMultipartUpload",
+        "s3:ListBucketMultipartUploads",
+        "s3:ListMultipartUploadParts"
+      ],
+      "Resource": [
+        "arn:aws:s3:::meravien-brt-labels",
+        "arn:aws:s3:::meravien-brt-labels/*",
+        "arn:aws:s3:::meravien-product-images",
+        "arn:aws:s3:::meravien-product-images/*"
+      ]
+    },
+    {
+      "Sid": "SESSendAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail",
+        "ses:SendTemplatedEmail"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
