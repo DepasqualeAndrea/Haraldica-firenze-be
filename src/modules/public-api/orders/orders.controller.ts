@@ -47,7 +47,7 @@ export class OrdersController {
   }
 
   @Post('elements/confirm/:paymentIntentId')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Conferma pagamento Stripe Elements',
@@ -59,7 +59,7 @@ export class OrdersController {
   }
 
   @Get('elements/status/:paymentIntentId')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiParam({ name: 'paymentIntentId' })
   async getElementsPaymentStatus(@Param('paymentIntentId') paymentIntentId: string) {
@@ -118,7 +118,7 @@ export class OrdersController {
   }
 
   @Get('checkout/:orderId/status')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Stato checkout per ordine' })
   @ApiParam({ name: 'orderId' })
@@ -127,7 +127,7 @@ export class OrdersController {
   }
 
   @Post('checkout/:orderId/retry')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Riprova pagamento per ordine esistente' })
   @ApiParam({ name: 'orderId' })
@@ -143,7 +143,7 @@ export class OrdersController {
   }
 
   @Get('my')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiQuery({ name: 'status', required: false, enum: OrderStatus })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -153,7 +153,7 @@ export class OrdersController {
   }
 
   @Get('my/:id')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Dettaglio mio ordine',
@@ -165,7 +165,7 @@ export class OrdersController {
   }
 
   @Put('my/:id/cancel')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiParam({ name: 'id' })
   async cancelMyOrder(
@@ -341,7 +341,7 @@ export class OrdersController {
   }
 
   @Get('cancel')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   async handleOrderCancel(@CurrentUser() user: any) {
     const lastOrder = await this.ordersService.getLastPendingOrder(user.id);
@@ -362,7 +362,7 @@ export class OrdersController {
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Dettaglio ordine',
@@ -374,7 +374,7 @@ export class OrdersController {
   }
 
   @Put('my/:id/update')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiParam({ name: 'id', description: 'Order ID' })
   async updateMyOrder(

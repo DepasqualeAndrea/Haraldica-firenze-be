@@ -29,8 +29,9 @@ import { RedisService } from './redis.service';
           console.log('✅ Redis connected successfully');
         });
 
-        client.on('error', (err) => {
-          console.error('❌ Redis connection error:', err);
+        client.on('error', () => {
+          // Silently ignore Redis errors in development
+          // Redis is optional and not required for the app to work
         });
 
         client.on('ready', () => {

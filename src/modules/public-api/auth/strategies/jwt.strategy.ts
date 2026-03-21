@@ -28,7 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private configService: ConfigService,
     private usersService: UsersService,
   ) {
-    const supabaseJwtSecret = configService.get<string>('SUPABASE_JWT_SECRET');
+    const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET;
     const localJwtSecret = configService.get<string>('jwt.secret');
 
     if (!supabaseJwtSecret && !localJwtSecret) {
@@ -68,6 +68,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         }
       },
     });
+
+    // Log after super() call
+    this.logger.log(`🔐 JWT Strategy initialized with Supabase secret: ${supabaseJwtSecret ? '✅' : '❌'}`);
+    this.logger.log(`🔐 JWT Strategy initialized with Local secret: ${localJwtSecret ? '✅' : '❌'}`);
   }
 
   async validate(payload: JwtPayload) {

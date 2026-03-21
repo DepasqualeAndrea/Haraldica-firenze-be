@@ -89,6 +89,11 @@ export class UsersService {
     sub: string;
     email?: string;
     role?: string;
+    firstName?: string;
+    lastName?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    marketingConsent?: boolean;
   }): Promise<User> {
     // Try to find by supabaseId first
     let user = await this.findBySupabaseId(payload.sub);
@@ -111,6 +116,11 @@ export class UsersService {
       role: UserRole.CUSTOMER,
       isActive: true,
       isEmailVerified: true, // Supabase handles email verification
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      dateOfBirth: payload.dateOfBirth ? new Date(payload.dateOfBirth) : undefined,
+      gender: payload.gender,
+      marketingConsent: payload.marketingConsent ?? false,
     });
 
     const saved = await this.userRepository.save(newUser);

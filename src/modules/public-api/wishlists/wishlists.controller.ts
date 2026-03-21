@@ -23,7 +23,7 @@ import { AddToWishlistDto } from './dto/add-to-wishlist.dto';
 
 @ApiTags('Wishlist')
 @Controller('wishlists')
-@UseGuards(JwtAuthGuard)
+// @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
 @ApiBearerAuth()
 export class WishlistsController {
   constructor(private readonly wishlistsService: WishlistsService) {}

@@ -1,6 +1,6 @@
 // src/modules/users/users.module.ts
 
-import { forwardRef, Module } from '@nestjs/common';
+import { forwardRef, Module, Global } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Entities
@@ -18,6 +18,7 @@ import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { Address } from 'src/database/entities/address.entity';
 
+@Global()
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Address]),

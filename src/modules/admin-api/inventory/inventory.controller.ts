@@ -6,7 +6,6 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   BadRequestException
 } from '@nestjs/common';
 import {
@@ -16,20 +15,17 @@ import {
   ApiQuery,
   ApiExcludeEndpoint
 } from '@nestjs/swagger';
+import { RequireAdmin } from 'src/common/guards/flexible-auth.guard';
 import { InventoryService } from './inventory.service';
 import { UpdateStockInventroryDto } from './dto/update-stock.dto';
 import { StockMovementFilterDto } from './dto/stock-movement.dto';
 import { InventoryMovementType } from 'src/database/entities/inventory-movement.entity';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
 import { UserRole } from 'src/database/entities/user.entity';
 
 @ApiTags('Inventory')
 @Controller('inventory')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@RequireAdmin()
 @ApiBearerAuth()
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}

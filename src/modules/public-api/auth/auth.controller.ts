@@ -271,7 +271,7 @@ export class AuthController {
   }
 
   @Get('profile')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Profilo utente registrato' })
   async profile(@Request() req: any) {

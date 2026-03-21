@@ -1,7 +1,7 @@
 // src/modules/users/dto/create-user.dto.ts
 
-import { IsEmail, IsString, MinLength, IsEnum, IsOptional, IsBoolean } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsString, MinLength, IsEnum, IsOptional, IsBoolean, IsDateString, IsIn } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole } from 'src/database/entities/user.entity';
 
 export class CreateUserDto {
@@ -22,6 +22,16 @@ export class CreateUserDto {
   @ApiProperty({ example: 'HashedPassword123!' })
   @IsString()
   password: string;
+
+  @ApiPropertyOptional({ example: '1990-05-15', description: 'Data di nascita (YYYY-MM-DD)' })
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
+
+  @ApiPropertyOptional({ example: 'M', description: 'Genere: M, F, altro' })
+  @IsOptional()
+  @IsIn(['M', 'F', 'altro'])
+  gender?: string;
 
   @ApiProperty({ example: '+39 333 1234567', required: false })
   @IsOptional()

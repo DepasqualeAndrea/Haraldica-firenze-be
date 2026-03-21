@@ -1,17 +1,14 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { RequireAdmin } from 'src/common/guards/flexible-auth.guard';
 import { AnalyticsService } from './analytics.service';
 import { AnalyticsQueryDto, AnalyticsPeriod } from './dto/analytics-query.dto';
 import { SalesReportDto } from './dto/sales-report.dto';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { UserRole } from 'src/database/entities/user.entity';
 
 @ApiTags('analytics')
 @Controller('analytics')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@RequireAdmin()
+
 @ApiBearerAuth()
 export class AnalyticsController {
   constructor(private analyticsService: AnalyticsService) {}

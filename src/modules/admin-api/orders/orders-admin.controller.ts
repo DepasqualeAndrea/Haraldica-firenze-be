@@ -7,7 +7,6 @@ import {
   Param,
   Query,
   ParseUUIDPipe,
-  UseGuards,
   Logger,
   Post,
   NotFoundException,
@@ -21,10 +20,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { UserRole } from 'src/database/entities/user.entity';
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
+import { RequireAdmin } from 'src/common/guards/flexible-auth.guard';
 import { OrdersService } from 'src/modules/public-api/orders/orders.service';
 import { OrderFilterDto, UpdateOrderStatusDto } from 'src/modules/public-api/orders/dto/order.dto';
 import { OrderStatus } from 'src/database/entities/order.entity';
@@ -43,8 +39,8 @@ import {
 @ApiTags('Admin - Orders')
 @ApiBearerAuth()
 @Controller('admin/orders')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@RequireAdmin()
+
 export class OrdersAdminController {
   private readonly logger = new Logger(OrdersAdminController.name);
 
@@ -105,10 +101,10 @@ export class OrdersAdminController {
   @ApiResponse({ status: 200, description: 'Lista ordini in processing' })
   async getProcessingOrders() {
     this.logger.log('📋 [GET] Fetching PROCESSING orders');
-    
+
     const orders = await this.orderRepository.find({
       where: { status: OrderStatus.PROCESSING },
-      relations: ['user', 'shipment', 'items', 'items.product'],
+      relations: ['user', 'shipment', 'items', 'items.variant'],
       order: { createdAt: 'ASC' },
     });
 

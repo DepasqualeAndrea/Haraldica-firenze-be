@@ -3,16 +3,12 @@ import {
   Get,
   Query,
   Res,
-  UseGuards,
   Logger,
   StreamableFile,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { UserRole } from 'src/database/entities/user.entity';
+import { RequireAdmin } from 'src/common/guards/flexible-auth.guard';
 import { ReportsService } from './reports.service';
 import { ReportFilterDto, ReportFormat } from './dto/report.dto';
 import { Readable } from 'stream';
@@ -20,8 +16,7 @@ import { Readable } from 'stream';
 @ApiTags('Admin - Reports')
 @ApiBearerAuth()
 @Controller('admin/reports')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@RequireAdmin()
 export class ReportsController {
   private readonly logger = new Logger(ReportsController.name);
 

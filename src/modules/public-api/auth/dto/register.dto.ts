@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, Matches, IsBoolean, IsIn, IsOptional } from 'class-validator';
+import { IsEmail, IsString, MinLength, Matches, IsBoolean, IsIn, IsOptional, IsDateString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -13,6 +13,16 @@ export class RegisterDto {
   @IsString()
   @MinLength(2)
   lastName?: string;
+
+  @ApiPropertyOptional({ example: '1990-05-15', description: 'Data di nascita (YYYY-MM-DD)' })
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
+
+  @ApiPropertyOptional({ example: 'M', description: 'Genere: M, F, altro' })
+  @IsOptional()
+  @IsIn(['M', 'F', 'altro'])
+  gender?: string;
 
   @ApiProperty({ example: 'mario.rossi@email.com' })
   @IsEmail()

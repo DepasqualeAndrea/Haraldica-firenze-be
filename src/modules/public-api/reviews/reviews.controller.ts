@@ -1,10 +1,7 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiBearerAuth } from "@nestjs/swagger";
 import { CurrentUser } from "src/common/decorators/current-user.decorator";
-import { Roles } from "src/common/decorators/roles.decorator";
-import { JwtAuthGuard } from "src/common/guards/jwt-auth.guard";
-import { RolesGuard } from "src/common/guards/roles.guard";
-import { UserRole } from "src/database/entities/user.entity";
+import { RequireAdmin } from "src/common/guards/flexible-auth.guard";
 import { BulkReviewActionDto } from "./dto/bulk-operations.dto";
 import { CreateReviewDto } from "./dto/create-review.dto";
 import { ReviewFilterDto } from "./dto/review-filter.dto";
@@ -76,7 +73,7 @@ export class ReviewsController {
   // ===========================
 
   @Get('me/eligible-products')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Prodotti recensibili',
@@ -87,7 +84,7 @@ export class ReviewsController {
   }
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Le mie recensioni',
@@ -98,7 +95,7 @@ export class ReviewsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Crea recensione',
@@ -112,7 +109,7 @@ export class ReviewsController {
   }
 
   @Put('me/:id')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Aggiorna mia recensione',
@@ -127,7 +124,7 @@ export class ReviewsController {
   }
 
   @Delete('me/:id')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Elimina mia recensione',
@@ -145,7 +142,7 @@ export class ReviewsController {
   }
 
   @Post(':id/vote')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Vota utilità recensione',
@@ -164,8 +161,7 @@ export class ReviewsController {
   // ===========================
 
   @Get('admin/all')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Tutte le recensioni (Admin)',
@@ -192,8 +188,7 @@ export class ReviewsController {
   }
 
   @Get('admin/stats')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Statistiche complete recensioni (Admin)',
@@ -204,8 +199,7 @@ export class ReviewsController {
   }
 
   @Get('admin/pending')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Recensioni in attesa di approvazione (Admin)',
@@ -220,8 +214,7 @@ export class ReviewsController {
   }
 
   @Post('admin/:id/response')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Aggiungi risposta negozio (Admin)',
@@ -235,8 +228,7 @@ export class ReviewsController {
   }
 
   @Put('admin/:id/featured')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Toggle evidenzia recensione (Admin)',
@@ -247,8 +239,7 @@ export class ReviewsController {
   }
 
   @Put('admin/:id/approval')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Toggle approva recensione (Admin)',
@@ -259,8 +250,7 @@ export class ReviewsController {
   }
 
   @Post('admin/bulk-action')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Azione bulk su recensioni (Admin)',
@@ -278,8 +268,7 @@ export class ReviewsController {
   // ===========================
 
   @Get('admin/reports/top-products')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Top prodotti per recensioni (Admin)',
@@ -296,8 +285,7 @@ export class ReviewsController {
   }
 
   @Get('admin/reports/user-activity')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Attività utenti recensioni (Admin)',
@@ -310,8 +298,7 @@ export class ReviewsController {
   }
 
   @Get('admin/export/reviews')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Esporta recensioni CSV (Admin)',
@@ -327,8 +314,7 @@ export class ReviewsController {
   // ===========================
 
   @Get('admin/flagged')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Recensioni segnalate (Admin)',
@@ -346,8 +332,7 @@ export class ReviewsController {
   }
 
   @Get('admin/recent-activity')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Attività recente recensioni (Admin)',
@@ -371,8 +356,7 @@ export class ReviewsController {
   // ===========================
 
   @Get('analytics/sentiment-trends')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Trend sentiment recensioni (Admin)',
@@ -389,8 +373,7 @@ export class ReviewsController {
   }
 
   @Get('analytics/response-effectiveness')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ 
     summary: 'Efficacia risposte negozio (Admin)',

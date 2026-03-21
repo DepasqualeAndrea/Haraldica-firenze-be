@@ -9,20 +9,14 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 // Guards & Decorators
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
+import { RequireAdmin } from 'src/common/guards/flexible-auth.guard';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
-
-// Entities
-import { UserRole } from 'src/database/entities/user.entity';
 
 // Service & DTOs
 import { NewsletterService } from './newsletter.service';
@@ -34,8 +28,7 @@ import {
 
 @ApiTags('Newsletter (Admin)')
 @Controller('admin/newsletters')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@RequireAdmin()
 @ApiBearerAuth()
 export class NewsletterController {
   constructor(private readonly newsletterService: NewsletterService) {}

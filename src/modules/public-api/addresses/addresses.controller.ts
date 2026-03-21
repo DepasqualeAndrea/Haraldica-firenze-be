@@ -9,7 +9,7 @@ import { CreateAddressDto, UpdateAddressDto } from './dto/update-address.dto';
 
 @ApiTags('addresses')
 @Controller('addresses')
-@UseGuards(JwtAuthGuard)
+// @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
 @ApiBearerAuth()
 export class AddressesController {
   constructor(private addressService: AddressService) { }

@@ -145,7 +145,7 @@ export class CartController {
    * @requires JWT token
    */
   @Get()
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   async getUserCart(@Request() req): Promise<CartResponseDto> {
     const { identifier, type } = this.resolveUserCart(req);
     this.logger.log(`🔍 Recupero carrello ${type}: ${identifier}`);
@@ -158,7 +158,7 @@ export class CartController {
    * @requires JWT token
    */
   @Post('items')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   async addToUserCart(
     @Request() req,
     @Body() addToCartDto: AddToCartDto,
@@ -174,7 +174,7 @@ export class CartController {
    * @requires JWT token
    */
   @Put('items/:itemId')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   async updateUserCartItem(
     @Request() req,
     @Param('itemId') itemId: string,
@@ -201,7 +201,7 @@ export class CartController {
    * @requires JWT token
    */
   @Delete('items/:itemId')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   async removeFromUserCart(
     @Request() req,
     @Param('itemId') itemId: string
@@ -226,7 +226,7 @@ export class CartController {
    * @requires JWT token
    */
   @Delete()
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   async clearUserCart(@Request() req): Promise<CartOperationResponseDto> {
     const userType = req.user.type || 'customer';
     const identifier = userType === 'guest'
@@ -252,7 +252,7 @@ export class CartController {
    * @body { userId: string } - userId del carrello guest
    */
   @Post('merge')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @HttpCode(HttpStatus.OK)
   async mergeGuestCart(
     @Request() req,

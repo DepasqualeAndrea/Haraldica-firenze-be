@@ -15,8 +15,8 @@ import {
 import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 // Guards & Decorators
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
+import { RequireAuth } from 'src/common/guards/flexible-auth.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 
@@ -32,7 +32,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('Users')
-@UseGuards(JwtAuthGuard) // Tutto il controller richiede JWT
+// Authentication handled by global FlexibleAuthGuard
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
@@ -121,6 +121,7 @@ export class UsersController {
   // ===========================
 
   @Get('me/profile')
+  @RequireAuth()
   @ApiOperation({ summary: 'Il mio profilo' })
   async getMyProfile(@CurrentUser() user: any) {
     this.ensureUser(user);

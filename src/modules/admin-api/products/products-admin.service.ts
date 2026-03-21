@@ -28,7 +28,7 @@ import {
   UpdateProductDto,
   ProductResponseDto,
   ProductFilterDto,
-  ProductListResponseDto,
+  AdminProductListResponseDto,
   ProductStatsResponseDto,
   BulkUpdateProductsDto,
   CreateVariantDto,
@@ -210,7 +210,7 @@ export class ProductsAdminService {
    * Lista prodotti con filtri admin
    * Nota: Include prodotti disattivati per admin
    */
-  async findAll(filters?: ProductFilterDto): Promise<ProductListResponseDto> {
+  async findAll(filters?: ProductFilterDto): Promise<AdminProductListResponseDto> {
     try {
       const query = this.productRepository
         .createQueryBuilder('product')

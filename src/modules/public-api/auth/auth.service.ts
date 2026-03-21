@@ -64,14 +64,21 @@ export class AuthService {
    * Handles Supabase Auth webhook events to keep local DB in sync.
    * Called by POST /auth/sync
    */
-  async handleSupabaseWebhook(event: { type: string; record: { id: string; email?: string } }) {
+  async handleSupabaseWebhook(event: { type: string; record: any }) {
     this.logger.log(`📡 Supabase webhook: ${event.type}`);
 
     if (event.type === 'INSERT' && event.record?.id) {
-      // New Supabase user → ensure local record exists
+      const meta = event.record.raw_user_meta_data || {};
+      // For Google OAuth, Supabase stores full_name; split it into firstName/lastName
+      const fullNameParts = meta.full_name ? meta.full_name.split(' ') : [];
       await this.usersService.findOrCreateFromSupabase({
         sub: event.record.id,
         email: event.record.email,
+        firstName: meta.firstName || fullNameParts[0],
+        lastName: meta.lastName || fullNameParts.slice(1).join(' '),
+        dateOfBirth: meta.dateOfBirth,
+        gender: meta.gender,
+        marketingConsent: meta.marketingConsent,
       });
     } else if (event.type === 'DELETE' && event.record?.id) {
       const user = await this.usersService.findBySupabaseId(event.record.id);

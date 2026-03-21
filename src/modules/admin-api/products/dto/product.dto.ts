@@ -325,7 +325,7 @@ export class ProductResponseDto {
   }
 }
 
-export class ProductListResponseDto {
+export class AdminProductListResponseDto {
   @ApiProperty({ type: [ProductResponseDto] }) @Expose() @Type(() => ProductResponseDto)
   products: ProductResponseDto[];
 

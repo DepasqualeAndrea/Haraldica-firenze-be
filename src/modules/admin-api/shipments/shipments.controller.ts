@@ -8,17 +8,13 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   Logger,
   Res,
   StreamableFile,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { Readable } from 'stream';
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { UserRole } from 'src/database/entities/user.entity';
+import { RequireAdmin } from 'src/common/guards/flexible-auth.guard';
 
 // Services
 import { ShipmentsService } from 'src/modules/public-api/brt/shipments/shipments.service';
@@ -45,8 +41,7 @@ import { Shipment } from 'src/database/entities/shipment.entity';
 import { calculateShippingDate, getShippingDateRange, getMinutesUntilAutoConfirm } from 'src/utils/shipping-date.util';
 
 @Controller('admin/shipments')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@RequireAdmin()
 export class ShipmentsController {
   private readonly logger = new Logger(ShipmentsController.name);
 

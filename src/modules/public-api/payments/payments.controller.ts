@@ -62,7 +62,7 @@ export const GetUser = createParamDecorator(
 
 @ApiTags('payments')
 @Controller('payments')
-@UseGuards(JwtAuthGuard)
+// @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
 @ApiBearerAuth()
 export class PaymentsController {
   private readonly logger = new Logger(PaymentsController.name);

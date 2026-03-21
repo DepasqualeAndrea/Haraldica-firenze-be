@@ -1,9 +1,6 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, Query } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiBearerAuth } from "@nestjs/swagger";
-import { Roles } from "src/common/decorators/roles.decorator";
-import { JwtAuthGuard } from "src/common/guards/jwt-auth.guard";
-import { RolesGuard } from "src/common/guards/roles.guard";
-import { UserRole } from "src/database/entities/user.entity";
+import { RequireAdmin } from 'src/common/guards/flexible-auth.guard';
 import { SizeGuide } from "src/database/entities/size-guide.entity";
 import { CategoriesService } from "./categories.service";
 import { CategoryFilterDto } from "./dto/category-filter.dto";
@@ -93,8 +90,7 @@ export class CategoriesController {
   // ===========================
 
   @Get('admin/stats')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Statistiche categorie (Admin)',
@@ -105,8 +101,7 @@ export class CategoriesController {
   }
 
   @Get('admin/top-categories')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Top categorie per prodotti (Admin)',
@@ -118,8 +113,7 @@ export class CategoriesController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Crea categoria (Admin)',
@@ -130,8 +124,7 @@ export class CategoriesController {
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Aggiorna categoria (Admin)',
@@ -145,8 +138,7 @@ export class CategoriesController {
   }
 
   @Put(':id/move')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Sposta categoria (Admin)',
@@ -160,8 +152,7 @@ export class CategoriesController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Elimina categoria (Admin)',
@@ -176,8 +167,7 @@ export class CategoriesController {
   }
 
   @Post(':id/size-guide')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Crea/aggiorna guida taglie (Admin)',
@@ -188,8 +178,7 @@ export class CategoriesController {
   }
 
   @Delete(':id/size-guide')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Elimina guida taglie (Admin)',
@@ -204,8 +193,7 @@ export class CategoriesController {
   // ===========================
 
   @Put('admin/bulk/sort-order')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Aggiorna ordine multiplo (Admin)',
@@ -222,8 +210,7 @@ export class CategoriesController {
   }
 
   @Put('admin/bulk/activate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Attivazione/Disattivazione multipla (Admin)',
@@ -246,8 +233,7 @@ export class CategoriesController {
   // ===========================
 
   @Get('utils/validate-slug/:slug')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Valida unicità slug (Admin)',
@@ -266,8 +252,7 @@ export class CategoriesController {
   }
 
   @Get('utils/generate-slug')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Genera slug automatico (Admin)',
@@ -337,8 +322,7 @@ export class CategoriesController {
   // ===========================
 
   @Get('admin/export')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Esporta categorie (Admin)',
@@ -351,8 +335,7 @@ export class CategoriesController {
   }
 
   @Post('admin/import')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Importa categorie (Admin)',

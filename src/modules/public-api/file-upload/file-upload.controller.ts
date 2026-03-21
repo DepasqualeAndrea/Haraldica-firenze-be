@@ -103,7 +103,7 @@ export class FileUploadController {
   }
 
   @Post('avatar')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
   @ApiBearerAuth()
   @UseInterceptors(FileInterceptor('avatar'))
   @ApiOperation({ summary: 'Upload avatar utente' })

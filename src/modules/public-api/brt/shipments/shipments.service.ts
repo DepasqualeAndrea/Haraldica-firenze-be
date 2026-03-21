@@ -267,7 +267,7 @@ export class ShipmentsService {
         // 1. ✅ Carica ordine (senza lock pessimistico che causa problemi con LEFT JOIN)
         const order = await manager.findOne(Order, {
           where: { id: orderId },
-          relations: ['items', 'items.product', 'user'],
+          relations: ['items', 'items.variant', 'user'],
         });
 
         if (!order) {
@@ -924,7 +924,7 @@ export class ShipmentsService {
     const query = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.items', 'items')
-      .leftJoinAndSelect('items.product', 'product')
+      .leftJoinAndSelect('items.variant', 'variant')
       .leftJoinAndSelect('order.user', 'user')
       .where('order.status = :status', { status: OrderStatus.READY_TO_SHIP })
       .andWhere('order.brtShipmentId IS NOT NULL')
@@ -961,7 +961,7 @@ export class ShipmentsService {
     const query = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.items', 'items')
-      .leftJoinAndSelect('items.product', 'product')
+      .leftJoinAndSelect('items.variant', 'variant')
       .where('order.status = :status', { status: OrderStatus.CONFIRMED })
       .andWhere('order.brtShipmentId IS NULL')
       .orderBy('order.createdAt', 'ASC');

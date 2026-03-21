@@ -26,13 +26,13 @@ import {
   BulkDeleteCouponsDto,
   CollaboratorStatsDto,
 } from './dto/coupon.dto';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { UserRole } from 'src/database/entities/user.entity';
+import { RequireAdmin } from 'src/common/guards/flexible-auth.guard';
 
 @ApiTags('Admin - Coupons')
 @ApiBearerAuth()
 @Controller('admin/coupons')
-@Roles(UserRole.ADMIN)
+@RequireAdmin()
+
 export class CouponsAdminController {
   constructor(private readonly couponsService: CouponsAdminService) {}
 

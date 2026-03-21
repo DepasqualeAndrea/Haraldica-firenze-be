@@ -35,6 +35,12 @@ export class User {
   @Column({ nullable: true })
   lastName?: string;
 
+  @Column({ type: 'date', nullable: true })
+  dateOfBirth?: Date;
+
+  @Column({ nullable: true })
+  gender?: string; // 'M' | 'F' | 'altro'
+
   @Column({ nullable: true })
   phone?: string;
 

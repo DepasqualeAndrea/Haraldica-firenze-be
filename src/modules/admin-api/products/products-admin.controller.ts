@@ -7,7 +7,6 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
@@ -27,7 +26,7 @@ import {
   CreateProductDto,
   UpdateProductDto,
   ProductResponseDto,
-  ProductListResponseDto,
+  AdminProductListResponseDto,
   ProductFilterDto,
   BulkUpdateProductsDto,
   CreateVariantDto,
@@ -35,15 +34,12 @@ import {
   UpdateVariantStockDto,
   VariantResponseDto,
 } from './dto/product.dto';
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { UserRole } from 'src/database/entities/user.entity';
+import { RequireAdmin } from 'src/common/guards/flexible-auth.guard';
 
 @ApiTags('Products - Admin')
 @Controller('admin/products')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@RequireAdmin()
+
 @ApiBearerAuth()
 export class ProductsAdminController {
   constructor(private readonly productsService: ProductsAdminService) {}
@@ -61,7 +57,7 @@ export class ProductsAdminController {
     summary: 'Lista prodotti (Admin)',
     description: 'Visualizza tutti i prodotti con filtri e paginazione, include prodotti inattivi'
   })
-  @ApiResponse({ status: HttpStatus.OK, type: ProductListResponseDto })
+  @ApiResponse({ status: HttpStatus.OK, type: AdminProductListResponseDto })
   @ApiQuery({ name: 'query', required: false, description: 'Ricerca testuale' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -71,7 +67,7 @@ export class ProductsAdminController {
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'] })
   async listProducts(
     @Query(new ValidationPipe({ transform: true })) filters: ProductFilterDto
-  ): Promise<ProductListResponseDto> {
+  ): Promise<AdminProductListResponseDto> {
     return this.productsService.findAll(filters);
   }
 
