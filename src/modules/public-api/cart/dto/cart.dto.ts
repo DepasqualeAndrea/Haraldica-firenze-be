@@ -9,9 +9,13 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class AddToCartDto {
-  @ApiProperty({ description: 'ID della ProductVariant (taglia + colore specifico)' })
+  @ApiProperty({ description: 'ID della ProductVariant (colore)' })
   @IsUUID()
   variantId: string;
+
+  @ApiProperty({ description: 'Taglia selezionata. Es: "M", "L", "XL"' })
+  @IsString()
+  size: string;
 
   @ApiProperty({ description: 'Quantità da aggiungere', minimum: 1 })
   @IsInt() @Min(1)
@@ -68,25 +72,40 @@ export class CartBatchUpdateDto {
 export class CartVariantDto {
   @Expose() id: string;
   @Expose() sku: string;
-  @Expose() size: string;
   @Expose() colorName: string;
   @Expose() colorHex: string;
-  @Expose() availableStock: number;
+
+  /**
+   * Stock per taglia { "XS": 3, "S": 5, "M": 8, "L": 10, "XL": 0, "XXL": 2 }.
+   * Il FE usa questo insieme alla `size` del CartItem per mostrare la disponibilità.
+   */
+  @Expose() stockPerSize: Record<string, number>;
+
   @Expose() effectivePrice: number;
   @Expose() images?: string[];
 
-  // Dati del prodotto padre
+  // Dati del prodotto padre (flattened per comodità FE)
   @Expose() productId: string;
   @Expose() productName: string;
   @Expose() productSlug?: string;
   @Expose() productMaterials: string;
   @Expose() productOrigin: string;
   @Expose() productIsActive: boolean;
+  @Expose() productVendor?: string;
+  @Expose() productDescription?: string;
 }
 
 export class CartItemDto {
   @Expose() id: string;
   @Expose() variantId: string;
+
+  /**
+   * Taglia selezionata dall'utente per questo articolo.
+   * Es: "M", "L", "XL"
+   */
+  @ApiProperty({ example: 'M' }) @Expose()
+  size: string;
+
   @Expose() quantity: number;
   @Expose() notes?: string;
   @Expose() createdAt: Date;
@@ -102,11 +121,44 @@ export class CartItemDto {
   @ApiProperty() @Expose()
   get totalPrice(): number { return this.unitPrice * this.quantity; }
 
-  @ApiProperty() @Expose()
-  get isAvailable(): boolean { return this.variant?.availableStock >= this.quantity; }
+  /** Stock disponibile per la taglia selezionata */
+  private get _sizeStock(): number {
+    return (this.variant?.stockPerSize ?? {})[this.size] ?? 0;
+  }
 
   @ApiProperty() @Expose()
-  get maxQuantityAvailable(): number { return this.variant?.availableStock ?? 0; }
+  get isAvailable(): boolean { return this._sizeStock >= this.quantity; }
+
+  @ApiProperty() @Expose()
+  get maxQuantityAvailable(): number { return this._sizeStock; }
+
+  /** Composed title: "Product Name - Size". Example: "Mackintosh Goggle Car Coat - L" */
+  @ApiProperty() @Expose()
+  get title(): string {
+    const base = this.variant?.productName ?? '';
+    return this.size ? `${base} - ${this.size}` : base;
+  }
+
+  /** Option values for this line item. Example: ["L"] */
+  @ApiProperty({ type: [String] }) @Expose()
+  get variant_options(): string[] {
+    return this.size ? [this.size] : [];
+  }
+
+  /** Structured option breakdown. Example: [{ name: "Size", value: "L" }, { name: "Color", value: "Blu" }] */
+  @ApiProperty({ type: [Object] }) @Expose()
+  get options_with_values(): Array<{ name: string; value: string }> {
+    const opts: Array<{ name: string; value: string }> = [];
+    if (this.size) opts.push({ name: 'Size', value: this.size });
+    if (this.variant?.colorName) opts.push({ name: 'Color', value: this.variant.colorName });
+    return opts;
+  }
+
+  /** Product description forwarded to line-item level for cart display. */
+  @ApiPropertyOptional() @Expose()
+  get product_description(): string | undefined {
+    return this.variant?.productDescription;
+  }
 }
 
 export class CartTotalsDto {

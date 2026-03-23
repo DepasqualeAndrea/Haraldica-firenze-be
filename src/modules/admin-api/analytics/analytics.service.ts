@@ -187,7 +187,7 @@ export class AnalyticsService {
     return {
       variantId: variant.id,
       sku: variant.sku,
-      size: variant.size,
+      size: variant.availableSizes.join(', '),
       colorName: variant.colorName,
       productName: variant.product?.name || 'N/A',
       totalSold: salesData.totalSold,

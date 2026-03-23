@@ -624,8 +624,18 @@ export class ReturnsService {
 
       if (!variant) continue;
 
+      const orderItem = await this.orderItemRepository.findOne({
+        where: { id: item.orderItemId },
+      });
+
+      const size = orderItem?.size;
+      const updatedStockPerSize = { ...(variant.stockPerSize ?? {}) };
+      if (size) {
+        updatedStockPerSize[size] = (updatedStockPerSize[size] ?? 0) + item.quantity;
+      }
+
       await this.variantRepository.update(item.variantId, {
-        stock: variant.stock + item.quantity,
+        stockPerSize: updatedStockPerSize,
       });
 
       item.stockReintegrated = true;

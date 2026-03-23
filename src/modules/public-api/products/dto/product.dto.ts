@@ -90,6 +90,9 @@ export class PublicVariantDto {
   @ApiProperty() @Expose() effectivePrice: number;
   @ApiPropertyOptional({ type: [String] }) @Expose() images?: string[];
   @ApiProperty() @Expose() isActive: boolean;
+  @ApiPropertyOptional() @Expose() barcode?: string;
+  @ApiPropertyOptional() @Expose() weight?: number;
+  @ApiPropertyOptional() @Expose() weightUnit?: string;
 }
 
 export class PublicProductDto {
@@ -109,6 +112,20 @@ export class PublicProductDto {
   @ApiProperty() @Expose() reviewCount: number;
   @ApiPropertyOptional() @Expose() metaTitle?: string;
   @ApiPropertyOptional() @Expose() metaDescription?: string;
+  @ApiPropertyOptional() @Expose() vendor?: string;
+  @ApiPropertyOptional() @Expose() productType?: string;
+  @ApiPropertyOptional() @Expose() currency?: string;
+  @ApiPropertyOptional({ type: [String] }) @Expose() tags?: string[];
+  @ApiPropertyOptional() @Expose() publishedAt?: Date;
+  @ApiPropertyOptional() @Expose() descriptionHtml?: string;
+
+  @ApiProperty({ description: 'URL-friendly slug alias' }) @Expose()
+  get handle(): string { return (this as any).slug; }
+
+  @ApiPropertyOptional() @Expose() details?: object;
+  @ApiPropertyOptional() @Expose() sizeFit?: object;
+  @ApiPropertyOptional() @Expose() fabricCare?: object;
+  @ApiPropertyOptional() @Expose() shippingReturns?: object;
 
   @ApiProperty({ type: PublicCategoryDto }) @Expose() @Type(() => PublicCategoryDto)
   category: PublicCategoryDto;

@@ -103,7 +103,8 @@ export class InventoryService {
   async reduceStock(
     variantId: string,
     quantityToSubtract: number,
-    manager: EntityManager
+    manager: EntityManager,
+    size?: string,
   ): Promise<void> {
     const variant = await manager.findOne(ProductVariant, { where: { id: variantId } });
 
@@ -113,15 +114,37 @@ export class InventoryService {
       );
     }
 
-    if (variant.stock < quantityToSubtract) {
-      const displayName = variant.product?.name ?? variant.sku;
-      throw new BadRequestException(
-        `Stock insufficiente per ${displayName}. ` +
-        `Disponibili: ${variant.stock}, Richiesti: ${quantityToSubtract}`
-      );
+    const displayName = variant.product?.name ?? variant.sku;
+
+    if (size) {
+      // Nuovo modello: decrementa stockPerSize[size]
+      const current = variant.stockPerSize?.[size] ?? 0;
+      if (current < quantityToSubtract) {
+        throw new BadRequestException(
+          `Stock insufficiente per ${displayName} taglia ${size}. ` +
+          `Disponibili: ${current}, Richiesti: ${quantityToSubtract}`
+        );
+      }
+      variant.stockPerSize = {
+        ...variant.stockPerSize,
+        [size]: current - quantityToSubtract,
+      };
+    } else {
+      // Fallback legacy: decrementa la prima taglia disponibile
+      const firstAvailable = Object.entries(variant.stockPerSize || {})
+        .find(([, qty]) => qty >= quantityToSubtract);
+      if (!firstAvailable) {
+        throw new BadRequestException(
+          `Stock insufficiente per ${displayName}. Richiesti: ${quantityToSubtract}`
+        );
+      }
+      const [legacySize, legacyQty] = firstAvailable;
+      variant.stockPerSize = {
+        ...variant.stockPerSize,
+        [legacySize]: legacyQty - quantityToSubtract,
+      };
     }
 
-    variant.stock -= quantityToSubtract;
     await manager.save(ProductVariant, variant);
   }
 
@@ -164,15 +187,14 @@ export class InventoryService {
         throw new NotFoundException(`Variante ${variantId} non trovata`);
       }
 
-      // 2. Verifica stock disponibile (stock - reservedStock)
-      const availableStock = variant.stock - (variant.reservedStock || 0);
+      // 2. Verifica stock disponibile (totalStock — no reservation concept)
+      const availableStock = variant.totalStock;
 
       if (availableStock < quantity) {
         const displayName = variant.product?.name ?? variant.sku;
         throw new BadRequestException(
           `Stock insufficiente per ${displayName}. ` +
-          `Disponibile: ${availableStock}, Richiesto: ${quantity} ` +
-          `(Stock totale: ${variant.stock}, Riservato: ${variant.reservedStock || 0})`
+          `Disponibile: ${availableStock}, Richiesto: ${quantity}`
         );
       }
 
@@ -194,11 +216,7 @@ export class InventoryService {
         reservation.setExpiry(expiryHours);
         reservation.updatedAt = new Date();
 
-        // Aggiorna reserved stock
-        const quantityDiff = quantity - oldQuantity;
-        variant.reservedStock = (variant.reservedStock || 0) + quantityDiff;
-
-        await mgr.save(ProductVariant, variant);
+        // No reservedStock column in new model — just save the reservation update
         reservation = await mgr.save(StockReservation, reservation);
 
         const displayName = variant.product?.name ?? variant.sku;
@@ -219,10 +237,7 @@ export class InventoryService {
 
         reservation.setExpiry(expiryHours);
 
-        // 5. Incrementa reserved stock
-        variant.reservedStock = (variant.reservedStock || 0) + quantity;
-
-        await mgr.save(ProductVariant, variant);
+        // 5. No reservedStock column in new model — stock is tracked via stockPerSize only
         reservation = await mgr.save(StockReservation, reservation);
 
         const displayName = variant.product?.name ?? variant.sku;
@@ -287,29 +302,32 @@ export class InventoryService {
           .where('variant.id = :id', { id: variant.id })
           .getOne();
 
-        // 3. Verifica stock sufficiente
-        if (variant.stock < reservation.quantity) {
+        // 3. Verifica stock sufficiente (usa totalStock — nessun reservedStock)
+        const quantityBefore = variant.totalStock;
+        if (quantityBefore < reservation.quantity) {
           const displayName = variant.product?.name ?? variant.sku;
           throw new BadRequestException(
             `Stock insufficiente per confermare ordine ${orderId}. ` +
             `Variante: ${displayName} (${variant.sku}), ` +
-            `Stock: ${variant.stock}, Richiesto: ${reservation.quantity}`
+            `Stock: ${quantityBefore}, Richiesto: ${reservation.quantity}`
           );
         }
 
-        const quantityBefore = variant.stock;
-        const reservedBefore = variant.reservedStock || 0;
-
-        // 4. Scala stock fisico
-        variant.stock -= reservation.quantity;
-
-        // 5. Decrementa reserved stock
-        variant.reservedStock = Math.max(
-          0,
-          reservedBefore - reservation.quantity
-        );
+        // 4. Scala stock fisico dalla prima taglia con stock sufficiente
+        // (la reservation non traccia la taglia, usiamo la logica legacy)
+        let remainingToDeduct = reservation.quantity;
+        const updatedStockPerSize = { ...variant.stockPerSize };
+        for (const [sz, qty] of Object.entries(updatedStockPerSize)) {
+          if (remainingToDeduct <= 0) break;
+          const deduct = Math.min(qty, remainingToDeduct);
+          updatedStockPerSize[sz] = qty - deduct;
+          remainingToDeduct -= deduct;
+        }
+        variant.stockPerSize = updatedStockPerSize;
 
         await mgr.save(ProductVariant, variant);
+
+        const quantityAfterConfirm = variant.totalStock;
 
         // 6. Marca reservation come CONFIRMED con confirmedAt
         reservation.status = ReservationStatus.CONFIRMED;
@@ -322,7 +340,7 @@ export class InventoryService {
           movementType: InventoryMovementType.SALE,
           quantity: -reservation.quantity,
           quantityBefore,
-          quantityAfter: variant.stock,
+          quantityAfter: quantityAfterConfirm,
           orderId,
           reason: `Vendita ordine ${orderId}`,
           notes: `Stock reservation confermata: ${reservation.id}`,
@@ -336,8 +354,7 @@ export class InventoryService {
         this.logger.log(
           `✅ Stock confermato: Variante ${displayName} (${variant.sku}), ` +
           `Qty: ${reservation.quantity}, ` +
-          `Stock: ${quantityBefore} → ${variant.stock}, ` +
-          `Reserved: ${reservedBefore} → ${variant.reservedStock}`
+          `Stock: ${quantityBefore} → ${quantityAfterConfirm}`
         );
       }
 
@@ -397,11 +414,8 @@ export class InventoryService {
           continue;
         }
 
-        // 2. Decrementa reserved stock
-        const oldReserved = variant.reservedStock || 0;
-        variant.reservedStock = Math.max(0, oldReserved - reservation.quantity);
-
-        await mgr.save(ProductVariant, variant);
+        // 2. No reservedStock column in new model — nothing to decrement on variant
+        // stockPerSize values are already the available qty; release is a no-op on the variant
 
         // 3. Marca reservation come RELEASED
         reservation.status = ReservationStatus.RELEASED;
@@ -415,9 +429,8 @@ export class InventoryService {
 
         const displayName = variant.product?.name ?? variant.sku;
         this.logger.log(
-          `✅ Stock rilasciato: Variante ${displayName} (${variant.sku}), ` +
-          `Qty: ${reservation.quantity}, ` +
-          `Reserved: ${oldReserved} → ${variant.reservedStock}`
+          `✅ Reservation rilasciata: Variante ${displayName} (${variant.sku}), ` +
+          `Qty: ${reservation.quantity}`
         );
       }
 
@@ -484,10 +497,7 @@ export class InventoryService {
             continue;
           }
 
-          // Decrementa reserved stock
-          const oldReserved = variant.reservedStock || 0;
-          variant.reservedStock = Math.max(0, oldReserved - reservation.quantity);
-          await manager.save(ProductVariant, variant);
+          // No reservedStock column in new model — no-op on variant
 
           // Marca come EXPIRED
           reservation.status = ReservationStatus.EXPIRED;
@@ -642,7 +652,7 @@ export class InventoryService {
       const cost = Number(mv.unitCost) || 0;
       variantValues.set(mv.variantId!, {
         cost,
-        stock: v.stock ?? 0,
+        stock: v.totalStock,
         productName: v.product?.name ?? v.sku,
       });
     }
@@ -815,13 +825,13 @@ export class InventoryService {
       throw new NotFoundException(`Variante ${variantId} non trovata`);
     }
 
-    const availableStock = variant.availableStock; // usa getter
+    const availableStock = variant.totalStock;
     const shortage = Math.max(0, requestedQuantity - availableStock);
 
     return {
       available: availableStock >= requestedQuantity,
-      currentStock: variant.stock,
-      reservedStock: variant.reservedStock || 0,
+      currentStock: variant.totalStock,
+      reservedStock: 0, // no reservation system in new model
       availableStock,
       shortage,
       itemInfo: {
@@ -899,14 +909,14 @@ export class InventoryService {
     });
 
     const lowStockVariants = variants
-      .filter(variant => variant.availableStock <= 5)
+      .filter(variant => variant.totalStock <= 5)
       .map(variant => ({
         id: variant.id,
         name: variant.product?.name ?? variant.sku,
         sku: variant.sku,
-        currentStock: variant.stock,
-        reservedStock: variant.reservedStock || 0,
-        availableStock: variant.availableStock,
+        currentStock: variant.totalStock,
+        reservedStock: 0, // no reservation system in new model
+        availableStock: variant.totalStock,
         minStockThreshold: 5,
         category: variant.product?.category?.name,
         price: variant.effectivePrice,
@@ -974,7 +984,7 @@ export class InventoryService {
       throw new NotFoundException(`Variante ${variantId} non trovata`);
     }
 
-    const quantityBefore = variant.stock;
+    const quantityBefore = variant.totalStock;
     return { variant, quantityBefore };
   }
 
@@ -1042,8 +1052,50 @@ export class InventoryService {
 
     const savedMovement = await manager.save(InventoryMovement, inventoryMovement);
 
-    // Aggiorna stock variante
-    await manager.update(ProductVariant, variant.id, { stock: rest.quantityAfter });
+    // Aggiorna stockPerSize in base al tipo di movimento
+    const movementType = rest.updateStockDto.movementType;
+    const isOutgoing = [
+      InventoryMovementType.OUT,
+      InventoryMovementType.SALE,
+      InventoryMovementType.DAMAGE,
+    ].includes(movementType);
+    const delta = rest.quantityAfter - rest.quantityBefore; // positive = add, negative = remove
+
+    const updatedStockPerSize = { ...variant.stockPerSize };
+
+    if (movementType === InventoryMovementType.ADJUSTMENT) {
+      // ADJUSTMENT: ridistribuisce il valore assoluto su tutte le taglie in modo proporzionale
+      // Se non ci sono taglie, mette tutto in una chiave generica "DEFAULT"
+      const keys = Object.keys(updatedStockPerSize);
+      if (keys.length === 0) {
+        updatedStockPerSize['DEFAULT'] = Math.max(0, rest.quantityAfter);
+      } else {
+        // Distribuisce equamente con arrotondamento per difetto, il resto alla prima taglia
+        const target = Math.max(0, rest.quantityAfter);
+        const base = Math.floor(target / keys.length);
+        const remainder = target - base * keys.length;
+        keys.forEach((k, i) => {
+          updatedStockPerSize[k] = base + (i === 0 ? remainder : 0);
+        });
+      }
+    } else if (delta > 0) {
+      // IN / RETURN: aggiunge stock alla prima taglia disponibile o DEFAULT
+      const keys = Object.keys(updatedStockPerSize);
+      const targetKey = keys.length > 0 ? keys[0] : 'DEFAULT';
+      updatedStockPerSize[targetKey] = (updatedStockPerSize[targetKey] ?? 0) + delta;
+    } else if (delta < 0) {
+      // OUT / SALE / DAMAGE: scala dalla prima taglia con stock sufficiente
+      let remaining = Math.abs(delta);
+      for (const k of Object.keys(updatedStockPerSize)) {
+        if (remaining <= 0) break;
+        const deduct = Math.min(updatedStockPerSize[k], remaining);
+        updatedStockPerSize[k] -= deduct;
+        remaining -= deduct;
+      }
+    }
+
+    variant.stockPerSize = updatedStockPerSize;
+    await manager.update(ProductVariant, variant.id, { stockPerSize: updatedStockPerSize });
 
     // Ritorna movimento con relazioni
     return manager.findOne(InventoryMovement, {

@@ -789,7 +789,7 @@ export class PaymentsService {
               clothingType: item.variant?.product?.category?.clothingType ?? '',
               Item: item.productName,
               Color: item.variant?.colorName ?? '',
-              Size: item.variant?.size ?? '',
+              Size: item.size ?? '',
               SKU: item.productSku,
             }
           },

@@ -1,11 +1,11 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import * as FileType from 'file-type';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 export interface UploadResult {
   filename: string;
@@ -38,38 +38,37 @@ export class FileUploadService {
   ];
   private readonly maxFileSize = 5 * 1024 * 1024; // 5MB
 
-  // S3 Configuration
-  private readonly s3Client: S3Client;
-  private readonly s3Bucket: string;
-  private readonly s3Region: string;
-  private readonly useS3: boolean;
+  // Supabase Storage Configuration
+  private readonly supabase: SupabaseClient;
+  private readonly storageBucket: string;
+  private readonly useSupabaseStorage: boolean;
 
   constructor(private configService: ConfigService) {
     this.uploadDir = path.join(process.cwd(), 'uploads');
 
-    // S3 Configuration
-    this.s3Region = this.configService.get<string>('AWS_REGION', 'eu-central-1');
-    this.s3Bucket = this.configService.get<string>('AWS_S3_BUCKET_IMAGES', 'haraldicafirenze-product-images');
-    this.useS3 = this.configService.get<string>('NODE_ENV') !== 'development' ||
-                  this.configService.get<boolean>('USE_S3_LOCALLY', false);
+    // Supabase Configuration
+    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+    const supabaseServiceKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
 
-    // Initialize S3 client (IAM role if no explicit keys)
-    const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
-    const secretAccessKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
-    const s3ClientConfig = {
-      region: this.s3Region,
-      ...(accessKeyId && secretAccessKey
-        ? { credentials: { accessKeyId, secretAccessKey } }
-        : {}),
-    };
+    this.storageBucket = this.configService.get<string>('SUPABASE_STORAGE_BUCKET', 'product-images');
+    this.useSupabaseStorage = this.configService.get<string>('NODE_ENV') !== 'development' ||
+                              this.configService.get<boolean>('USE_SUPABASE_STORAGE_LOCALLY', true);
 
-    this.s3Client = new S3Client(s3ClientConfig);
-    this.logger.log(`✅ S3 Client initialized: Bucket=${this.s3Bucket}, Region=${this.s3Region}`);
+    // Initialize Supabase client
+    if (supabaseUrl && supabaseServiceKey) {
+      this.supabase = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      });
+      this.logger.log(`✅ Supabase Storage initialized: Bucket=${this.storageBucket}`);
+    }
 
     // Base URL for images
-    if (this.useS3 && this.s3Client) {
-      this.baseUrl = `https://${this.s3Bucket}.s3.${this.s3Region}.amazonaws.com`;
-      this.logger.log(`📦 Storage mode: S3 (${this.s3Bucket})`);
+    if (this.useSupabaseStorage && this.supabase) {
+      this.baseUrl = `${supabaseUrl}/storage/v1/object/public/${this.storageBucket}`;
+      this.logger.log(`📦 Storage mode: Supabase (${this.storageBucket})`);
     } else {
       const backendUrl = this.configService.get('app.backendUrl') ||
                          `http://localhost:${this.configService.get('app.port', 3000)}`;
@@ -109,24 +108,23 @@ export class FileUploadService {
     try {
       // Processa l'immagine
       const processedImage = await this.processImage(file.buffer, {
-        width: options.width || 800,
-        height: options.height || 800,
-        quality: options.quality || 85,
+        width: options.width || 1200,
+        height: options.height || 1600,
+        quality: options.quality || 90,
         format: options.format || 'webp',
-        createThumbnail: true,
-        thumbnailSize: 200,
+        createThumbnail: false,
         ...options,
       });
 
       let url: string;
       let thumbnailUrl: string | undefined;
 
-      if (this.useS3 && this.s3Client) {
-        // Upload to S3
-        url = await this.uploadToS3(processedImage.main, `products/${filename}`, 'image/webp');
+      if (this.useSupabaseStorage && this.supabase) {
+        // Upload to Supabase Storage
+        url = await this.uploadToSupabase(processedImage.main, `products/${filename}`, 'image/webp');
 
         if (processedImage.thumbnail) {
-          thumbnailUrl = await this.uploadToS3(
+          thumbnailUrl = await this.uploadToSupabase(
             processedImage.thumbnail,
             `products/thumbnails/${filename}`,
             'image/webp'
@@ -187,10 +185,10 @@ export class FileUploadService {
       let url: string;
       let thumbnailUrl: string;
 
-      if (this.useS3 && this.s3Client) {
-        // Upload to S3
-        url = await this.uploadToS3(processedImage.main, `avatars/${filename}`, 'image/webp');
-        thumbnailUrl = await this.uploadToS3(
+      if (this.useSupabaseStorage && this.supabase) {
+        // Upload to Supabase Storage
+        url = await this.uploadToSupabase(processedImage.main, `avatars/${filename}`, 'image/webp');
+        thumbnailUrl = await this.uploadToSupabase(
           processedImage.thumbnail!,
           `avatars/thumbnails/${filename}`,
           'image/webp'
@@ -229,35 +227,37 @@ export class FileUploadService {
   async uploadMultipleProductImages(
     files: Express.Multer.File[],
     options: ImageProcessingOptions = {}
-  ): Promise<UploadResult[]> {
+  ): Promise<{ urls: string[]; results: UploadResult[] }> {
     if (!files || files.length === 0) {
       throw new BadRequestException('Nessun file fornito');
     }
 
     if (files.length > 10) {
-      throw new BadRequestException('Massimo 10 immagini per prodotto');
+      throw new BadRequestException('Massimo 10 immagini per volta');
     }
 
     const results: UploadResult[] = [];
+    const urls: string[] = [];
 
     for (const file of files) {
       try {
         const result = await this.uploadProductImage(file, options);
         results.push(result);
+        urls.push(result.url);
       } catch (error) {
         this.logger.error(`Errore upload ${file.originalname}:`, error);
         // Continua con gli altri file
       }
     }
 
-    return results;
+    return { urls, results };
   }
 
   async deleteFile(filePath: string): Promise<boolean> {
     try {
-      // Check if it's an S3 URL
-      if (filePath.includes('s3.') && filePath.includes('amazonaws.com')) {
-        return await this.deleteFromS3(filePath);
+      // Check if it's a Supabase URL
+      if (filePath.includes('/storage/v1/object/public/')) {
+        return await this.deleteFromSupabase(filePath);
       }
 
       // Local file deletion
@@ -347,12 +347,12 @@ export class FileUploadService {
       totalSize: 0,
       productImages: 0,
       avatars: 0,
-      storageMode: this.useS3 ? `S3 (${this.s3Bucket})` : 'Local filesystem',
+      storageMode: this.useSupabaseStorage ? `Supabase (${this.storageBucket})` : 'Local filesystem',
     };
 
     try {
       // Conta immagini prodotti (solo per local)
-      if (!this.useS3) {
+      if (!this.useSupabaseStorage) {
         const productsDir = path.join(this.uploadDir, 'products');
         if (fs.existsSync(productsDir)) {
           const productFiles = fs.readdirSync(productsDir);
@@ -382,59 +382,71 @@ export class FileUploadService {
     return stats;
   }
 
-  // ==================== S3 Methods ====================
+  // ==================== Supabase Storage Methods ====================
 
-  private async uploadToS3(buffer: Buffer, key: string, contentType: string): Promise<string> {
-    const command = new PutObjectCommand({
-      Bucket: this.s3Bucket,
-      Key: key,
-      Body: buffer,
-      ContentType: contentType,
-      CacheControl: 'public, max-age=31536000', // 1 year cache
-    });
+  private async uploadToSupabase(buffer: Buffer, filePath: string, contentType: string): Promise<string> {
+    try {
+      const { data, error } = await this.supabase.storage
+        .from(this.storageBucket)
+        .upload(filePath, buffer, {
+          contentType,
+          cacheControl: '31536000', // 1 year
+          upsert: true // Sovrascrive se esiste già
+        });
 
-    await this.s3Client.send(command);
+      if (error) {
+        this.logger.error(`Errore upload Supabase:`, error);
+        throw new BadRequestException(`Errore upload: ${error.message}`);
+      }
 
-    const url = `https://${this.s3Bucket}.s3.${this.s3Region}.amazonaws.com/${key}`;
-    this.logger.log(`📤 [S3] Uploaded: ${key}`);
+      const url = `${this.baseUrl}/${data.path}`;
+      this.logger.log(`📤 [Supabase] Uploaded: ${filePath} → ${url}`);
 
-    return url;
+      return url;
+    } catch (error) {
+      this.logger.error('Errore upload to Supabase:', error);
+      throw new BadRequestException('Errore durante l\'upload su Supabase Storage');
+    }
   }
 
-  private async deleteFromS3(s3Url: string): Promise<boolean> {
+  private async deleteFromSupabase(supabaseUrl: string): Promise<boolean> {
     try {
-      // Extract key from S3 URL
-      const key = s3Url.split('.amazonaws.com/')[1];
+      // Extract path from Supabase URL
+      // Format: https://xxx.supabase.co/storage/v1/object/public/product-images/products/filename.webp
+      const pathMatch = supabaseUrl.match(/\/public\/[^/]+\/(.+)/);
 
-      if (!key) {
-        this.logger.warn(`Invalid S3 URL for deletion: ${s3Url}`);
+      if (!pathMatch || !pathMatch[1]) {
+        this.logger.warn(`Invalid Supabase URL for deletion: ${supabaseUrl}`);
         return false;
       }
 
-      const command = new DeleteObjectCommand({
-        Bucket: this.s3Bucket,
-        Key: key,
-      });
+      const filePath = pathMatch[1];
 
-      await this.s3Client.send(command);
+      const { error } = await this.supabase.storage
+        .from(this.storageBucket)
+        .remove([filePath]);
+
+      if (error) {
+        this.logger.error(`Errore eliminazione Supabase:`, error);
+        return false;
+      }
 
       // Also delete thumbnail if it's a product image
-      if (key.startsWith('products/') && !key.includes('thumbnails')) {
-        const thumbnailKey = key.replace('products/', 'products/thumbnails/');
+      if (filePath.startsWith('products/') && !filePath.includes('thumbnails')) {
+        const thumbnailPath = filePath.replace('products/', 'products/thumbnails/');
         try {
-          await this.s3Client.send(new DeleteObjectCommand({
-            Bucket: this.s3Bucket,
-            Key: thumbnailKey,
-          }));
+          await this.supabase.storage
+            .from(this.storageBucket)
+            .remove([thumbnailPath]);
         } catch (e) {
           // Thumbnail might not exist, ignore
         }
       }
 
-      this.logger.log(`🗑️ [S3] Deleted: ${key}`);
+      this.logger.log(`🗑️ [Supabase] Deleted: ${filePath}`);
       return true;
     } catch (error) {
-      this.logger.error(`❌ [S3] Delete failed:`, error);
+      this.logger.error(`❌ [Supabase] Delete failed:`, error);
       return false;
     }
   }
@@ -489,8 +501,8 @@ export class FileUploadService {
     // Resize se necessario
     if (options.width || options.height) {
       pipeline = pipeline.resize(options.width, options.height, {
-        fit: 'cover',
-        position: 'center',
+        fit: 'inside',          // mantiene le proporzioni originali senza tagliare
+        withoutEnlargement: true, // non ingrandisce se l'immagine è già piccola
       });
     }
 

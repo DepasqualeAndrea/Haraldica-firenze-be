@@ -18,7 +18,7 @@ import { ProductVariant } from './product-variant.entity';
  */
 @Entity('cart_items')
 @Check(`"quantity" > 0`)
-@Index(['cartId', 'variantId'], { unique: true })
+@Index(['cartId', 'variantId', 'size'], { unique: true })  // univoco per colore + taglia
 export class CartItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -30,6 +30,14 @@ export class CartItem {
   @Column()
   @Index()
   variantId: string;
+
+  /**
+   * Taglia selezionata dall'utente per questa variante (colore).
+   * Es: "M", "L", "XL"
+   * Default '' permette a synchronize di aggiungere la colonna su righe esistenti.
+   */
+  @Column({ default: '' })
+  size: string;
 
   @Column()
   quantity: number;

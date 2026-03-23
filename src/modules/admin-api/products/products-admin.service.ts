@@ -83,16 +83,38 @@ export class ProductsAdminService {
         // 2) Sanitizza campi JSON
         const sanitizedDto = this.sanitizeJsonFields(createProductDto);
 
-        // 3) Crea entity prodotto
+        // 3) Estrai campi non mappati sull'entity (varianti inline, mainImage/images ignorati)
+        const { variants: variantsDto, mainImage: _mainImage, images: _images, ...productFields } = sanitizedDto as any;
+
+        // 4) Crea entity prodotto
         const product = tx.create(Product, {
-          ...sanitizedDto,
+          ...productFields,
           category,
-          slug: sanitizedDto.slug || this.generateSlug(sanitizedDto.name),
+          slug: productFields.slug || this.generateSlug(productFields.name),
+          publishedAt: productFields.publishedAt ? new Date(productFields.publishedAt) : undefined,
         });
 
-        // 4) Salva prodotto
+        // 5) Salva prodotto
         savedProduct = await tx.save(product);
         this.logger.log(`✅ Prodotto salvato nel DB: ${savedProduct.name} (ID: ${savedProduct.id})`);
+
+        // 6) Crea varianti inline se presenti nel payload
+        if (variantsDto?.length) {
+          for (const variantDto of variantsDto as any[]) {
+            const { id: _variantId, ...variantData } = variantDto;
+
+            // Controlla SKU duplicato prima di inserire
+            const skuExists = await tx.findOne(ProductVariant, { where: { sku: variantData.sku } });
+            if (skuExists) {
+              this.logger.warn(`⚠️ SKU "${variantData.sku}" già esistente, variante saltata`);
+              continue;
+            }
+
+            const variant = tx.create(ProductVariant, { ...variantData, productId: savedProduct.id });
+            await tx.save(variant);
+          }
+          this.logger.log(`✅ ${variantsDto.length} varianti create per prodotto ${savedProduct.id}`);
+        }
       });
 
       if (!savedProduct) {
@@ -310,8 +332,15 @@ export class ProductsAdminService {
         ? this.sanitizeJsonFields(updateProductDto as CreateProductDto)
         : updateProductDto;
 
-      // FIX: Rimuoviamo esplicitamente 'id' dal DTO per evitare di sovrascrivere l'ID dell'entità
-      const { categoryId, id: _dtoId, ...productData } = sanitizedDto as any;
+      // Estrai campi non mappati sull'entity prima del merge
+      const {
+        categoryId,
+        id: _dtoId,
+        variants: variantsDto,
+        mainImage: _mainImage,  // calcolato, non persiste
+        images: _images,        // ignorato, le immagini vivono sulle varianti
+        ...productData
+      } = sanitizedDto as any;
 
       // Aggiorna categoria se cambiata
       if (categoryId && (!product.category || categoryId !== product.category.id)) {
@@ -326,9 +355,40 @@ export class ProductsAdminService {
         product.category = newCategory;
       }
 
-      // Applica modifiche
+      // Applica modifiche al prodotto
       this.productRepository.merge(product, productData);
+      if (productData.publishedAt) {
+        product.publishedAt = new Date(productData.publishedAt);
+      }
       const updatedProduct = await this.productRepository.save(product);
+
+      // Upsert varianti inline se presenti nel payload
+      if (variantsDto?.length) {
+        for (const variantDto of variantsDto as any[]) {
+          const { id: variantId, ...variantData } = variantDto;
+
+          if (variantId) {
+            // Variante esistente → aggiorna
+            const existing = await this.variantRepository.findOne({ where: { id: variantId, productId: id } });
+            if (existing) {
+              Object.assign(existing, variantData);
+              await this.variantRepository.save(existing);
+            } else {
+              this.logger.warn(`⚠️ Variante ${variantId} non trovata per prodotto ${id}, saltata`);
+            }
+          } else {
+            // Nuova variante → crea solo se SKU non esiste
+            const skuExists = await this.variantRepository.exists({ where: { sku: variantData.sku } });
+            if (!skuExists) {
+              const newVariant = this.variantRepository.create({ ...variantData, productId: id });
+              await this.variantRepository.save(newVariant);
+            } else {
+              this.logger.warn(`⚠️ SKU "${variantData.sku}" già esistente, variante saltata`);
+            }
+          }
+        }
+        this.logger.log(`✅ Varianti aggiornate per prodotto ${id}`);
+      }
 
       // Sync Stripe (nome/descrizione)
       if (updatedProduct.stripeProductId && (updateProductDto.name || updateProductDto.description)) {
@@ -402,9 +462,15 @@ export class ProductsAdminService {
     const variant = this.variantRepository.create({ ...dto, productId });
     const saved = await this.variantRepository.save(variant);
 
-    await this.inventoryService.recordInitialStock(saved.id, saved.stock || 0);
+    // Registra lo stock iniziale totale (somma di tutte le taglie)
+    const totalInitialStock = Object.values(saved.stockPerSize || {}).reduce((sum, qty) => sum + qty, 0);
+    await this.inventoryService.recordInitialStock(saved.id, totalInitialStock);
 
-    return plainToClass(VariantResponseDto, saved, { excludeExtraneousValues: true });
+    return plainToClass(VariantResponseDto, {
+      ...saved,
+      totalStock: totalInitialStock,
+      availableSizes: Object.entries(saved.stockPerSize || {}).filter(([, qty]) => qty > 0).map(([s]) => s),
+    }, { excludeExtraneousValues: true });
   }
 
   /**
@@ -412,7 +478,11 @@ export class ProductsAdminService {
    */
   async listVariants(productId: string): Promise<VariantResponseDto[]> {
     const variants = await this.variantRepository.find({ where: { productId } });
-    return variants.map(v => plainToClass(VariantResponseDto, v, { excludeExtraneousValues: true }));
+    return variants.map(v => plainToClass(VariantResponseDto, {
+      ...v,
+      totalStock: Object.values(v.stockPerSize || {}).reduce((sum, qty) => sum + qty, 0),
+      availableSizes: Object.entries(v.stockPerSize || {}).filter(([, qty]) => qty > 0).map(([s]) => s),
+    }, { excludeExtraneousValues: true }));
   }
 
   /**
@@ -429,7 +499,11 @@ export class ProductsAdminService {
 
     Object.assign(variant, dto);
     const saved = await this.variantRepository.save(variant);
-    return plainToClass(VariantResponseDto, saved, { excludeExtraneousValues: true });
+    return plainToClass(VariantResponseDto, {
+      ...saved,
+      totalStock: Object.values(saved.stockPerSize || {}).reduce((sum, qty) => sum + qty, 0),
+      availableSizes: Object.entries(saved.stockPerSize || {}).filter(([, qty]) => qty > 0).map(([s]) => s),
+    }, { excludeExtraneousValues: true });
   }
 
   /**
@@ -442,21 +516,44 @@ export class ProductsAdminService {
   }
 
   /**
-   * Aggiorna stock variante (set / add / subtract)
+   * Aggiorna stock variante per una taglia specifica (set / add / subtract).
+   * Il campo `reason` di UpdateVariantStockDto viene usato come size (es. "M").
+   * Se size non è specificato, applica l'operazione alla prima taglia disponibile.
    */
   async updateVariantStock(productId: string, variantId: string, dto: UpdateVariantStockDto): Promise<VariantResponseDto> {
     const variant = await this.variantRepository.findOne({ where: { id: variantId, productId } });
     if (!variant) throw new NotFoundException(`Variante ${variantId} non trovata`);
 
-    let newStock: number;
-    const op = dto.operation ?? 'set';
-    if (op === 'set') newStock = dto.quantity;
-    else if (op === 'add') newStock = variant.stock + dto.quantity;
-    else newStock = Math.max(0, variant.stock - dto.quantity);
+    const stockPerSize = { ...(variant.stockPerSize || {}) };
+    const size = dto.reason; // convention: reason viene usato come size per questo endpoint
 
-    await this.variantRepository.update(variantId, { stock: newStock });
-    variant.stock = newStock;
-    return plainToClass(VariantResponseDto, variant, { excludeExtraneousValues: true });
+    if (size) {
+      const current = stockPerSize[size] ?? 0;
+      const op = dto.operation ?? 'set';
+      if (op === 'set') stockPerSize[size] = dto.quantity;
+      else if (op === 'add') stockPerSize[size] = current + dto.quantity;
+      else stockPerSize[size] = Math.max(0, current - dto.quantity);
+    } else {
+      // Senza size: applica a tutte le taglie (set) o usa la prima disponibile
+      const op = dto.operation ?? 'set';
+      if (op === 'set') {
+        // set uniforme su tutte le taglie (edge case: distribuisce equamente)
+        for (const s of Object.keys(stockPerSize)) {
+          stockPerSize[s] = dto.quantity;
+        }
+      }
+      // add/subtract senza size non ha senso — ignora silenziosamente
+    }
+
+    await this.variantRepository.update(variantId, { stockPerSize });
+    variant.stockPerSize = stockPerSize;
+
+    const totalStock = Object.values(stockPerSize).reduce((sum, qty) => sum + qty, 0);
+    return plainToClass(VariantResponseDto, {
+      ...variant,
+      totalStock,
+      availableSizes: Object.entries(stockPerSize).filter(([, qty]) => qty > 0).map(([s]) => s),
+    }, { excludeExtraneousValues: true });
   }
 
   // ===========================
@@ -514,15 +611,19 @@ export class ProductsAdminService {
         ])
         .getRawOne();
 
-      const [lowStockVariants, outOfStockVariants, totalVariants, topCategories] = await Promise.all([
-        this.variantRepository.createQueryBuilder('v')
-          .where('v.stock > 0 AND v.stock <= 5')
-          .andWhere('v.isActive = true')
-          .getCount(),
-        this.variantRepository.createQueryBuilder('v')
-          .where('v.stock = 0')
-          .andWhere('v.isActive = true')
-          .getCount(),
+      // Low/out-of-stock calcolati via stockPerSize JSONB
+      // totalStock = somma dei valori in stockPerSize
+      const allVariants = await this.variantRepository.find({ where: { isActive: true } });
+      const lowStockVariants = allVariants.filter(v => {
+        const total = Object.values(v.stockPerSize || {}).reduce((s, q) => s + q, 0);
+        return total > 0 && total <= 5;
+      }).length;
+      const outOfStockVariants = allVariants.filter(v => {
+        const total = Object.values(v.stockPerSize || {}).reduce((s, q) => s + q, 0);
+        return total === 0;
+      }).length;
+
+      const [totalVariants, topCategories] = await Promise.all([
         this.variantRepository.count(),
         this.getTopCategories(),
       ]);
@@ -769,12 +870,69 @@ export class ProductsAdminService {
   }
 
   /**
-   * Converte Product entity a Response DTO
+   * Converte Product entity a Response DTO.
+   *
+   * IMPORTANTE: il ritorno è un plain object (non un'istanza di ProductResponseDto),
+   * quindi i getter della classe non vengono eseguiti automaticamente.
+   * I campi calcolati (mainImage, availableSizes, availableColors, ecc.)
+   * devono essere costruiti esplicitamente qui.
    */
   private convertToProductResponseDto(product: Product): any {
+    const variants = product.variants || [];
+
+    // mainImage: 1° variante isDefault  2° variante con sortOrder più basso  3° placeholder
+    const sortedVariants = [...variants].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const defaultVariant = sortedVariants.find(v => v.isDefault) ?? sortedVariants[0];
+    const mainImage: string = defaultVariant?.images?.[0] ?? '/assets/images/placeholder-product.jpg';
+
+    // Tutte le taglie del prodotto (range completo definito sul prodotto)
+    const sizes: string[] = product.sizes?.length ? product.sizes : [];
+
+    // Taglie con stock disponibile aggregate da tutte le varianti attive
+    const sizesWithStock = new Set<string>();
+    for (const v of variants) {
+      if (!v.isActive) continue;
+      for (const [size, qty] of Object.entries(v.stockPerSize || {})) {
+        if (qty > 0) sizesWithStock.add(size);
+      }
+    }
+    // Rispetta l'ordine canonico di product.sizes
+    const availableSizes: string[] = sizes.length
+      ? sizes.filter(s => sizesWithStock.has(s))
+      : [...sizesWithStock];
+
+    // Colori disponibili con stock per taglia e signatureDetails
+    const availableColors = variants
+      .filter(v => v.isActive)
+      .map(v => ({
+        name: v.colorName,
+        hex: v.colorHex,
+        images: v.images ?? [],
+        stockPerSize: v.stockPerSize ?? {},
+        availableSizes: Object.entries(v.stockPerSize ?? {})
+          .filter(([, qty]) => qty > 0)
+          .map(([size]) => size),
+        signatureDetails: v.signatureDetails ?? [],
+      }));
+
+    // Mappa varianti nel formato VariantResponseDto
+    const variantDtos = variants.map(v => ({
+      ...v,
+      totalStock: Object.values(v.stockPerSize || {}).reduce((sum, qty) => sum + qty, 0),
+      availableSizes: Object.entries(v.stockPerSize || {})
+        .filter(([, qty]) => qty > 0)
+        .map(([size]) => size),
+    }));
+
     return {
       ...product,
-      variants: product.variants || [],
+      variants: variantDtos,
+      mainImage,
+      sizes,
+      availableSizes,
+      availableColors,
+      handle: product.slug,
+      isInStock: variants.some(v => v.isActive && v.totalStock > 0),
     };
   }
 
@@ -799,7 +957,8 @@ export class ProductsAdminService {
     }
 
     if (filters.inStockOnly) {
-      query.andWhere('variants.stock > 0');
+      // stockPerSize è JSONB: filtra varianti con almeno una taglia con qty > 0
+      query.andWhere(`variants.stockPerSize != '{}'`);
     }
 
     if (filters.onSaleOnly) {
@@ -817,7 +976,8 @@ export class ProductsAdminService {
     }
 
     if (filters.size) {
-      query.andWhere('variants.size = :size', { size: filters.size });
+      // Filtra varianti che hanno stock > 0 per la taglia richiesta
+      query.andWhere(`(variants.stockPerSize ->> :size)::int > 0`, { size: filters.size });
     }
 
     if (filters.color) {

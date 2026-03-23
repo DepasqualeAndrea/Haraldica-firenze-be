@@ -21,6 +21,17 @@ export class OrderItem {
   @Column({ nullable: true })
   productSku: string;
 
+  /**
+   * Taglia selezionata al momento dell'ordine (snapshot).
+   * Necessaria per il decremento stock e per il tracciamento inventario.
+   */
+  @Column({ nullable: true })
+  size: string;
+
+  /** Colore snapshot al momento dell'ordine */
+  @Column({ nullable: true })
+  colorName: string;
+
   @Column('int')
   quantity: number;
 

@@ -536,7 +536,7 @@ export class OrdersService {
         productSku: item.productSku,
         variant: item.variant ? {
           id: item.variant.id,
-          size: item.variant.size,
+          size: item.size,
           colorName: item.variant.colorName,
           colorHex: item.variant.colorHex,
           image: item.variant.images?.[0],

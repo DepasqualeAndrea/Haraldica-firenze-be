@@ -2,24 +2,21 @@ import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn,
   ManyToOne, OneToMany, JoinColumn, Index, Check,
 } from 'typeorm';
-import { Product } from './product.entity';
+import { Product, SignatureDetailJson } from './product.entity';
 import { CartItem } from './cart-item.entity';
 import { OrderItem } from './order-item.entity';
 import { NumericTransformer } from '../transformers/numeric.transformer';
 
 /**
- * ProductVariant — l'oggetto fisico a magazzino.
+ * ProductVariant — rappresenta UN COLORE di un prodotto.
  *
- * Un Product ha N varianti. Ogni variante rappresenta una combinazione
- * univoca di taglia + colore con il proprio stock e, opzionalmente,
- * un prezzo differente dal basePrice del prodotto padre.
+ * La taglia NON è più parte dell'entità variante: ogni variante gestisce
+ * tutte le taglie tramite `stockPerSize` (JSONB).
  *
- * Lo SKU è il codice univoco che identifica fisicamente il capo:
- *   es. CAM-SET-BIA-IT42 → Camicia / Seta / Bianca / Taglia IT42
+ * Esempio: Variant "Blu Navy" ha stockPerSize = { XS:3, S:5, M:8, L:10, XL:0, XXL:2 }
+ * SKU: "ABITO-NAVY" (non include più la taglia)
  */
 @Entity('product_variants')
-@Check(`"stock" >= 0`)
-@Check(`"reservedStock" >= 0`)
 @Check(`"variantPriceOverride" IS NULL OR "variantPriceOverride" >= 0`)
 export class ProductVariant {
   @PrimaryGeneratedColumn('uuid')
@@ -33,15 +30,14 @@ export class ProductVariant {
   @JoinColumn({ name: 'productId' })
   product: Product;
 
-  // ── Identificazione fisica ────────────────────────────────────────────────
+  // ── Identificazione ───────────────────────────────────────────────────────
 
-  /** Codice SKU univoco. Solo maiuscolo, numeri e trattini. Es: CAM-SET-BIA-IT42 */
+  /**
+   * SKU univoco per colore. Solo maiuscolo, numeri e trattini.
+   * Es: "ABITO-NAVY", "CAPPOTTO-BEIGE"
+   */
   @Column({ unique: true })
   sku: string;
-
-  /** Taglia: S | M | L | XL | IT44 | IT46 | 42 (scarpe) */
-  @Column()
-  size: string;
 
   /** Nome colore leggibile. Es: "Blu Oltremare", "Bianco Avorio" */
   @Column()
@@ -51,21 +47,24 @@ export class ProductVariant {
   @Column({ length: 7 })
   colorHex: string;
 
-  // ── Inventario ───────────────────────────────────────────────────────────
+  // ── Inventario per taglia ─────────────────────────────────────────────────
 
-  @Column({ type: 'integer', default: 0 })
-  @Index()
-  stock: number;
-
-  /** Stock prenotato (ordini in corso, non ancora confermati) */
-  @Column({ type: 'integer', default: 0 })
-  reservedStock: number;
+  /**
+   * Stock disponibile per ogni taglia.
+   * Le chiavi corrispondono a product.sizes.
+   * Es: { "XS": 3, "S": 5, "M": 8, "L": 10, "XL": 0, "XXL": 2 }
+   *
+   * Una taglia assente o a 0 = esaurita.
+   * Il decremento avviene al checkout confermato (webhook Stripe).
+   */
+  @Column({ type: 'jsonb', default: {} })
+  stockPerSize: Record<string, number>;
 
   // ── Pricing ───────────────────────────────────────────────────────────────
 
   /**
-   * Se null: usa product.basePrice.
-   * Se valorizzato: sovrascrive il prezzo base (es. cashmere extra-fine, taglia speciale).
+   * Sovrascrive il basePrice del prodotto per questo colore.
+   * Es. edizione limitata, colore premium.
    */
   @Column('numeric', { precision: 10, scale: 2, nullable: true, transformer: NumericTransformer })
   variantPriceOverride?: number;
@@ -73,16 +72,54 @@ export class ProductVariant {
   // ── Media ─────────────────────────────────────────────────────────────────
 
   /**
-   * Array di URL immagini su Supabase Storage specifici per questo colore.
+   * Immagini specifiche per questo colore (su Supabase Storage).
    * Primo elemento = immagine principale del colore.
    */
-  @Column('jsonb', { nullable: true, default: () => "'[]'::jsonb" })
+  @Column({ type: 'jsonb', nullable: true, default: [] })
   images?: string[];
+
+  /**
+   * Dettagli di qualità specifici per questo colore.
+   * Es: bottoni diversi, fodera con pattern unico, cuciture a contrasto.
+   * Sovrascrivono o integrano i signatureDetails del prodotto padre.
+   */
+  @Column({ type: 'jsonb', nullable: true, default: [] })
+  signatureDetails?: SignatureDetailJson[];
+
+  // ── Display order ─────────────────────────────────────────────────────────
+
+  /**
+   * Ordine di visualizzazione nel selettore colori (0 = primo).
+   * La variante con sortOrder più basso è quella mostrata per prima.
+   */
+  @Column({ default: 0 })
+  sortOrder: number;
+
+  /**
+   * Se true, questa è la variante mostrata per default quando si apre
+   * la scheda prodotto. Solo una variante per prodotto dovrebbe averla true.
+   * Il BE non la forza in modo esclusivo: è responsabilità del FE/admin.
+   */
+  @Column({ default: false })
+  isDefault: boolean;
 
   // ── Status ────────────────────────────────────────────────────────────────
 
   @Column({ default: true })
   isActive: boolean;
+
+  // ── Logistics ─────────────────────────────────────────────────────────────
+
+  /** EAN-13 or UPC barcode. */
+  @Column({ nullable: true })
+  barcode?: string;
+
+  /** Peso medio del capo per calcolo spedizione. */
+  @Column('numeric', { precision: 8, scale: 3, nullable: true, transformer: NumericTransformer })
+  weight?: number;
+
+  @Column({ length: 2, nullable: true, default: 'kg' })
+  weightUnit?: string;
 
   // ── Relations ─────────────────────────────────────────────────────────────
 
@@ -107,12 +144,29 @@ export class ProductVariant {
     return this.variantPriceOverride ?? this.product?.basePrice;
   }
 
-  /** Stock disponibile al pubblico (stock fisico - prenotato) */
-  get availableStock(): number {
-    return Math.max(0, this.stock - (this.reservedStock || 0));
+  /** Stock totale sommando tutte le taglie */
+  get totalStock(): number {
+    return Object.values(this.stockPerSize || {}).reduce((sum, qty) => sum + qty, 0);
+  }
+
+  /** Taglie con stock > 0 */
+  get availableSizes(): string[] {
+    return Object.entries(this.stockPerSize || {})
+      .filter(([, qty]) => qty > 0)
+      .map(([size]) => size);
+  }
+
+  /** Stock per una taglia specifica */
+  getStockForSize(size: string): number {
+    return this.stockPerSize?.[size] ?? 0;
+  }
+
+  /** Taglia disponibile? */
+  isSizeAvailable(size: string): boolean {
+    return this.isActive && this.getStockForSize(size) > 0;
   }
 
   isInStock(): boolean {
-    return this.isActive && this.availableStock > 0;
+    return this.isActive && this.totalStock > 0;
   }
 }

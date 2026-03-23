@@ -391,12 +391,12 @@ export class ProductsPublicService {
         .where('p.isActive = true')
         .getRawOne();
 
-      // Taglie distinte dalle varianti
+      // Taglie distinte dai prodotti (da product.sizes TEXT[]) — più preciso del vecchio v.size
       const sizesRaw = await this.productRepo.manager
         .createQueryBuilder()
-        .select('DISTINCT v.size', 'size')
-        .from('product_variants', 'v')
-        .where('v.is_active = true')
+        .select('DISTINCT unnest(p.sizes)', 'size')
+        .from('products', 'p')
+        .where('p.is_active = true')
         .orderBy('size', 'ASC')
         .getRawMany();
 
@@ -461,9 +461,9 @@ export class ProductsPublicService {
       qb.andWhere('p.basePrice <= :maxPrice', { maxPrice: filters.maxPrice });
     }
 
-    // Filtro taglia (dalla variante)
+    // Filtro taglia: varianti con stock > 0 per quella taglia (stockPerSize JSONB)
     if (filters.size) {
-      qb.andWhere('v.size = :size', { size: filters.size });
+      qb.andWhere(`(v.stockPerSize ->> :size)::int > 0`, { size: filters.size });
     }
 
     // Filtro colore (dalla variante)
@@ -483,7 +483,7 @@ export class ProductsPublicService {
 
     // Filtri boolean
     if (filters.inStockOnly) {
-      qb.andWhere('(v.stock - v.reservedStock) > 0');
+      qb.andWhere(`v.stockPerSize != '{}'`);
     }
     if (filters.featuredOnly) {
       qb.andWhere('p.isFeatured = true');
@@ -529,8 +529,47 @@ export class ProductsPublicService {
    * Mappa entity Product a response DTO
    */
   private mapProduct(p: Product, detailed = false): any {
-    const totalStock = p.variants?.reduce((s, v) => s + v.availableStock, 0) ?? 0;
-    const mainImage = p.variants?.[0]?.images?.[0] ?? '/assets/images/placeholder-product.jpg';
+    const variants = p.variants || [];
+
+    // mainImage: 1° variante isDefault  2° variante con sortOrder più basso  3° placeholder
+    const sortedVariants = [...variants].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const defaultVariant = sortedVariants.find(v => v.isDefault) ?? sortedVariants[0];
+    const mainImage = defaultVariant?.images?.[0] ?? '/assets/images/placeholder-product.jpg';
+
+    // Tutte le taglie del prodotto (range completo definito sul prodotto)
+    const sizes: string[] = p.sizes?.length ? p.sizes : [];
+
+    // Stock totale (somma di tutte le varianti attive × tutte le taglie)
+    const totalStock = variants.reduce((sum, v) => {
+      if (!v.isActive) return sum;
+      return sum + Object.values(v.stockPerSize || {}).reduce((s, q) => s + q, 0);
+    }, 0);
+
+    // Taglie con stock disponibile (aggregate su tutte le varianti attive)
+    const sizesWithStock = new Set<string>();
+    for (const v of variants) {
+      if (!v.isActive) continue;
+      for (const [size, qty] of Object.entries(v.stockPerSize || {})) {
+        if (qty > 0) sizesWithStock.add(size);
+      }
+    }
+    const availableSizes: string[] = sizes.length
+      ? sizes.filter(s => sizesWithStock.has(s))
+      : [...sizesWithStock];
+
+    // Colori disponibili: ciascuna variante = un colore, con stockPerSize diretto
+    const availableColors = variants
+      .filter(v => v.isActive)
+      .map(v => ({
+        name: v.colorName,
+        hex: v.colorHex,
+        images: v.images ?? [],
+        stockPerSize: v.stockPerSize ?? {},
+        availableSizes: Object.entries(v.stockPerSize ?? {})
+          .filter(([, qty]) => qty > 0)
+          .map(([size]) => size),
+        signatureDetails: v.signatureDetails ?? [],
+      }));
 
     const base = {
       id: p.id,
@@ -544,21 +583,38 @@ export class ProductsPublicService {
       productLine: p.productLine,
       isActive: p.isActive,
       slug: p.slug,
+      handle: p.slug,
       isFeatured: p.isFeatured,
       isOnSale: p.isOnSale,
       category: p.category,
       averageRating: p.averageRating,
       reviewCount: p.reviewCount,
       salesCount: p.salesCount,
-      variants: p.variants,
+      variants,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
+
+      // Full-Spec fields
+      vendor: p.vendor,
+      productType: p.productType,
+      currency: p.currency ?? 'EUR',
+      tags: p.tags ?? [],
+      publishedAt: p.publishedAt,
+      descriptionHtml: p.descriptionHtml,
+      details: p.details,
+      sizeFit: p.sizeFit,
+      fabricCare: p.fabricCare,
+      shippingReturns: p.shippingReturns,
+      signatureDetails: p.signatureDetails ?? [],
 
       // Computed fields
       isInStock: totalStock > 0,
       totalStock,
       lowestPrice: p.basePrice,
       mainImage,
+      sizes,
+      availableSizes,
+      availableColors,
     };
 
     if (detailed) {

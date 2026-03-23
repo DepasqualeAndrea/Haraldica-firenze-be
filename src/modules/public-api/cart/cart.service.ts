@@ -81,18 +81,30 @@ export class CartService {
   }
 
   async addToCart(identifier: string, dto: AddToCartDto, type: CartType): Promise<CartOperationResponseDto> {
-    const { variantId, quantity, notes } = dto;
+    const { variantId, size, quantity, notes } = dto;
 
     const variant = await this.findPurchasableVariant(variantId);
+
+    // Verifica che la taglia esista e abbia stock
+    const sizeStock = variant.getStockForSize(size);
+    if (sizeStock <= 0) {
+      throw new BadRequestException(
+        `Taglia ${size} non disponibile per ${variant.product?.name} - ${variant.colorName}.`,
+      );
+    }
+
     const cart = await this.getCart(identifier, type);
 
-    const existingItem = cart.items.find(i => i.variantId === variantId);
+    // Cerca item esistente per stessa variante + stessa taglia
+    const existingItem = cart.items.find(
+      i => i.variantId === variantId && (i as any).size === size,
+    );
     const newTotalQty = (existingItem?.quantity || 0) + quantity;
 
-    if (variant.availableStock < newTotalQty) {
+    if (sizeStock < newTotalQty) {
       throw new BadRequestException(
-        `Stock insufficiente per ${variant.product.name} (${variant.colorName} / ${variant.size}). ` +
-        `Richiesto: ${newTotalQty}, Disponibile: ${variant.availableStock}`,
+        `Stock insufficiente per ${variant.product?.name} (${variant.colorName} / ${size}). ` +
+        `Richiesto: ${newTotalQty}, Disponibile: ${sizeStock}`,
       );
     }
 
@@ -104,6 +116,7 @@ export class CartService {
       const newItem = this.cartItemRepository.create({
         cartId: cart.id,
         variantId: variant.id,
+        size,                                  // taglia selezionata
         quantity,
         notes,
         lockedPrice: variant.effectivePrice,   // SECURITY: price lock
@@ -116,7 +129,7 @@ export class CartService {
 
     return {
       success: true,
-      message: `${variant.product.name} (${variant.colorName} / ${variant.size}) ${existingItem ? 'aggiornato' : 'aggiunto'} al carrello`,
+      message: `${variant.product?.name} (${variant.colorName} / ${size}) ${existingItem ? 'aggiornato' : 'aggiunto'} al carrello`,
       cart: updatedCart,
     };
   }
@@ -129,8 +142,10 @@ export class CartService {
     if (!item) throw new NotFoundException('Articolo non trovato nel carrello');
 
     const variant = await this.findPurchasableVariant(item.variantId);
-    if (variant.availableStock < dto.quantity) {
-      throw new BadRequestException(`Stock insufficiente. Disponibile: ${variant.availableStock}`);
+    const itemSize = (item as any).size as string;
+    const sizeStock = variant.getStockForSize(itemSize);
+    if (sizeStock < dto.quantity) {
+      throw new BadRequestException(`Stock insufficiente per taglia ${itemSize}. Disponibile: ${sizeStock}`);
     }
 
     const payload: Partial<CartItem> = { quantity: dto.quantity };
@@ -226,15 +241,17 @@ export class CartService {
     for (const item of cart.items) {
       const variant = item.variant;
       if (!variant) { errors.push(`Variante ${item.variantId} non trovata`); continue; }
+      const itemSize = (item as any).size as string;
       if (!variant.isActive || !variant.product?.isActive) {
-        errors.push(`${variant.product?.name ?? 'Articolo'} (${variant.colorName} / ${variant.size}) non è più disponibile`);
+        errors.push(`${variant.product?.name ?? 'Articolo'} (${variant.colorName} / ${itemSize}) non è più disponibile`);
         continue;
       }
-      if (variant.availableStock < item.quantity) {
-        if (variant.availableStock === 0) {
-          errors.push(`${variant.product.name} (${variant.colorName} / ${variant.size}) è esaurito`);
+      const sizeStock = variant.getStockForSize(itemSize);
+      if (sizeStock < item.quantity) {
+        if (sizeStock === 0) {
+          errors.push(`${variant.product.name} (${variant.colorName} / ${itemSize}) è esaurito`);
         } else {
-          warnings.push(`${variant.product.name}: disponibili solo ${variant.availableStock} pz (richiesti: ${item.quantity})`);
+          warnings.push(`${variant.product.name}: disponibili solo ${sizeStock} pz per taglia ${itemSize} (richiesti: ${item.quantity})`);
         }
       }
       // SECURITY: controlla variazione prezzo >10%
@@ -322,7 +339,7 @@ export class CartService {
       totalDiscount += 0; // Sconti gestiti a livello di coupon (ordine)
       totalItems += item.quantity;
 
-      if (variant.availableStock < item.quantity) allItemsAvailable = false;
+      if (variant.getStockForSize((item as any).size) < item.quantity) allItemsAvailable = false;
     }
 
     const estimatedShipping = this.calculateEstimatedShipping(subtotal);

@@ -156,7 +156,7 @@ export class ReportsService {
       items: order.items.map((item) => ({
         name: item.productName,
         sku: item.productSku || 'N/A',
-        size: item.variant?.size || 'N/A',
+        size: item.size || 'N/A',
         colorName: item.variant?.colorName || 'N/A',
         quantity: item.quantity,
         unitPrice: this.round(Number(item.unitPrice)),

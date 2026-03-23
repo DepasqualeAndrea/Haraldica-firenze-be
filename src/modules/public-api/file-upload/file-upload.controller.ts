@@ -1,24 +1,20 @@
-import { 
-  Controller, 
-  Post, 
-  Delete, 
-  Get, 
-  Param, 
+import {
+  Controller,
+  Post,
+  Delete,
+  Get,
+  Param,
   Query,
-  UseGuards, 
-  UseInterceptors, 
-  UploadedFile, 
-  UploadedFiles, 
+  UseInterceptors,
+  UploadedFile,
+  UploadedFiles,
   BadRequestException
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { FileUploadService } from './file-upload.service';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { UserRole } from 'src/database/entities/user.entity';
+import { RequireAdmin, RequireAuth } from 'src/common/guards/flexible-auth.guard';
 
 @ApiTags('file-upload')
 @Controller('upload')
@@ -26,8 +22,7 @@ export class FileUploadController {
   constructor(private fileUploadService: FileUploadService) {}
 
   @Post('product-image')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @UseInterceptors(FileInterceptor('image'))
   @ApiOperation({ summary: 'Upload immagine prodotto (Admin)' })
@@ -63,8 +58,7 @@ export class FileUploadController {
   }
 
   @Post('product-images')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @UseInterceptors(FilesInterceptor('images', 10))
   @ApiOperation({ summary: 'Upload multiple immagini prodotto (Admin)' })
@@ -103,7 +97,7 @@ export class FileUploadController {
   }
 
   @Post('avatar')
-  // @UseGuards(JwtAuthGuard) - Removed: using global FlexibleAuthGuard
+  @RequireAuth()
   @ApiBearerAuth()
   @UseInterceptors(FileInterceptor('avatar'))
   @ApiOperation({ summary: 'Upload avatar utente' })
@@ -131,8 +125,7 @@ export class FileUploadController {
   }
 
   @Delete('file')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Elimina file (Admin)' })
   async deleteFile(@Query('filepath') filepath: string) {
@@ -141,7 +134,7 @@ export class FileUploadController {
     }
 
     const success = await this.fileUploadService.deleteFile(filepath);
-    
+
     if (success) {
       return { message: 'File eliminato con successo' };
     } else {
@@ -150,13 +143,12 @@ export class FileUploadController {
   }
 
   @Post('optimize')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Ottimizza immagini esistenti (Admin)' })
   async optimizeImages() {
     const result = await this.fileUploadService.optimizeExistingImages();
-    
+
     return {
       message: 'Ottimizzazione completata',
       processed: result.processed,
@@ -165,8 +157,7 @@ export class FileUploadController {
   }
 
   @Get('stats')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @RequireAdmin()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Statistiche upload (Admin)' })
   async getUploadStats() {
