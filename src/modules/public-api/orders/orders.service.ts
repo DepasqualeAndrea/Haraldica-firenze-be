@@ -22,6 +22,8 @@ import { ProductVariant } from 'src/database/entities/product-variant.entity';
 
 // Services
 import { InventoryService } from 'src/modules/admin-api/inventory/inventory.service';
+import { CouponsAdminService } from 'src/modules/admin-api/coupons/coupons.service';
+import { CouponType } from 'src/database/entities/coupon.entity';
 
 // DTOs
 import {
@@ -55,6 +57,7 @@ export class OrdersService {
     private eventEmitter: EventEmitter2,
     private addressService: AddressService,
     private configService: ConfigService,
+    private couponsAdminService: CouponsAdminService,
     @Inject(forwardRef(() => BrtService))
     private brtService: BrtService,
     @Inject(forwardRef(() => ShipmentsService))
@@ -96,8 +99,44 @@ export class OrdersService {
       const shippingConfig = this.configService.get('stripe.shipping');
       const freeShippingThreshold = shippingConfig?.freeShippingThreshold || 200;
       const standardShippingCost = shippingConfig?.standardShippingCost || 9.90;
-      const shippingCost = subtotal >= freeShippingThreshold ? 0 : standardShippingCost;
-      const total = subtotal + shippingCost;
+      const baseShippingCost = subtotal >= freeShippingThreshold ? 0 : standardShippingCost;
+
+      // Applica coupon se presente
+      let discountAmount = 0;
+      let appliedCouponCode: string | undefined;
+      let appliedCouponId: string | undefined;
+      let effectiveShippingCost = baseShippingCost;
+
+      if (orderData.couponCode) {
+        const validation = await this.couponsAdminService.validate({
+          code: orderData.couponCode,
+          orderTotal: subtotal,     // minimumOrderAmount si calcola sul subtotal
+          userId: orderData.userId,
+        });
+
+        if (!validation.valid) {
+          throw new BadRequestException(
+            `Coupon non valido: ${validation.errorMessage ?? validation.errorCode}`,
+          );
+        }
+
+        const coupon = validation.coupon!;
+        if (coupon.type === CouponType.FREE_SHIPPING) {
+          effectiveShippingCost = 0;
+          discountAmount = baseShippingCost;  // quanto risparmiato (per analytics)
+        } else {
+          discountAmount = validation.discountAmount ?? 0;
+        }
+
+        appliedCouponCode = coupon.code;
+        appliedCouponId = coupon.id;
+
+        this.logger.log(
+          `🏷️ Coupon applicato: ${coupon.code} → sconto €${discountAmount.toFixed(2)} (tipo: ${coupon.type})`,
+        );
+      }
+
+      const total = Math.round((subtotal + effectiveShippingCost - discountAmount) * 100) / 100;
 
       // 3. Genera orderNumber
       const orderNumber = await this.generateOrderNumberSafe(transactionManager);
@@ -115,8 +154,11 @@ export class OrdersService {
         notes: orderData.notes,
         invoiceRequested: orderData.invoiceRequested,
         subtotal,
-        shippingCost,
+        shippingCost: effectiveShippingCost,
+        discountAmount,
         total,
+        couponCode: appliedCouponCode,
+        couponId: appliedCouponId,
         status: OrderStatus.PENDING,
         stockReserved: false,
       });

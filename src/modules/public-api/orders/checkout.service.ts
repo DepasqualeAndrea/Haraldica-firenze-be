@@ -112,7 +112,7 @@ export class CheckoutService {
 
         // 2. Calcola hash carrello per idempotenza
         logProgress('START: Calculate cart hash');
-        const cartHash = this.calculateCartHash(cart.items);
+        const cartHash = this.calculateCartHash(cart.items, checkoutData.couponCode);
         logProgress('DONE: Calculate cart hash');
 
         // 2.1 SECURITY: Check duplicate order prevention
@@ -185,7 +185,7 @@ export class CheckoutService {
 
         // 4. Verifica idempotenza con carrello identico
         if (existingOrder) {
-          const existingCartHash = this.calculateOrderItemsHash(existingOrder.items);
+          const existingCartHash = this.calculateOrderItemsHash(existingOrder.items, existingOrder.couponCode ?? undefined);
 
           if (existingCartHash === cartHash) {
             // ✅ Carrello IDENTICO
@@ -757,9 +757,10 @@ export class CheckoutService {
   // ===========================
 
   /**
-   * Calcola hash del carrello per idempotenza
+   * Calcola hash del carrello per idempotenza.
+   * Include couponCode per evitare riuso di PENDING order con coupon diverso.
    */
-  private calculateCartHash(items: CartItem[]): string {
+  private calculateCartHash(items: CartItem[], couponCode?: string): string {
     if (!items || items.length === 0) {
       return '';
     }
@@ -769,19 +770,23 @@ export class CheckoutService {
       .sort()
       .join('|');
 
-    return createHash('md5').update(itemsStr).digest('hex');
+    const couponSuffix = couponCode ? `|coupon:${couponCode.toUpperCase()}` : '';
+
+    return createHash('md5').update(itemsStr + couponSuffix).digest('hex');
   }
 
   /**
-   * Calcola hash items ordine
+   * Calcola hash items ordine (include couponCode per confronto corretto)
    */
-  private calculateOrderItemsHash(items: OrderItem[]): string {
+  private calculateOrderItemsHash(items: OrderItem[], couponCode?: string): string {
     const itemsStr = items
       .map((item) => `${item.variantId}:${item.quantity}`)
       .sort()
       .join('|');
 
-    return createHash('md5').update(itemsStr).digest('hex');
+    const couponSuffix = couponCode ? `|coupon:${couponCode.toUpperCase()}` : '';
+
+    return createHash('md5').update(itemsStr + couponSuffix).digest('hex');
   }
 
 

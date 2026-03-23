@@ -27,6 +27,7 @@ const DEFAULT_IGNORED_PATHS = [
   '/api/v1/reviews',
   '/api/v1/returns',
   '/api/v1/payments',
+  '/api/v1/coupons',
 ];
 
 export function csrfMiddleware(

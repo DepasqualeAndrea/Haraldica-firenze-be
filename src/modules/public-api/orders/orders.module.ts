@@ -25,6 +25,7 @@ import { ShipmentsModule } from "../brt/shipments/shipments.module";
 import { AuthModule } from "../auth/auth.module";
 import { DuplicateOrderGuard } from "src/common/security/duplicate-order.guard";
 import { RedisModule } from "src/common/redis/redis.module";
+import { CouponsAdminModule } from "src/modules/admin-api/coupons/coupons.module";
 
 
 @Module({
@@ -41,6 +42,7 @@ import { RedisModule } from "src/common/redis/redis.module";
     forwardRef(() => BrtModule),
     forwardRef(() => ShipmentsModule),
     forwardRef(() => AuthModule),
+    CouponsAdminModule,
 
     JwtModule.registerAsync({
       imports: [ConfigModule],

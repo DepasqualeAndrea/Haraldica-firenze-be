@@ -39,6 +39,7 @@ import { UsersModule } from './modules/public-api/users/users.module';
 import { InventoryModule } from './modules/admin-api/inventory/inventory.module';
 import { ProductsAdminModule } from './modules/admin-api/products/products-admin.module';
 import { CouponsAdminModule } from './modules/admin-api/coupons/coupons.module';
+import { CouponsPublicModule } from './modules/public-api/coupons/coupons-public.module';
 import { OrdersAdminModule } from './modules/admin-api/orders/orders-admin.module';
 import { ReturnsModule } from './modules/public-api/returns/returns.module';
 import { ShipmentsModule } from './modules/public-api/brt/shipments/shipments.module';
@@ -189,6 +190,7 @@ import { AuditLogModule } from './common/audit/audit-log.module';
     ProductsPublicModule,
     ProductsAdminModule,
     CouponsAdminModule,
+    CouponsPublicModule,
     OrdersAdminModule,
     OrdersEventsModule,
     ShipmentsModule,

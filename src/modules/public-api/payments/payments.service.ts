@@ -209,6 +209,10 @@ export class PaymentsService {
           orderNumber: order.orderNumber,
           userId: order.user?.id || '',
           customerEmail: order.customerEmail || '',
+          ...(order.couponCode ? {
+            couponCode: order.couponCode,
+            discountAmount: String(order.discountAmount ?? 0),
+          } : {}),
         },
         capture_method: 'automatic',
         setup_future_usage: 'off_session',

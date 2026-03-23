@@ -504,13 +504,19 @@ export class CouponsAdminService {
       .where('o.couponCode IS NOT NULL')
       .getRawOne<{ totalDiscount: string }>();
 
-    // Top 5 coupon per utilizzi
-    const topCoupons = await this.couponsRepo
-      .createQueryBuilder('c')
-      .select(['c.code', 'c.usedCount'])
-      .orderBy('c.usedCount', 'DESC')
+    // Top 5 coupon per revenue netta (ordini confermati)
+    const validStatuses = [OrderStatus.CONFIRMED, OrderStatus.DELIVERED, OrderStatus.PROCESSING, OrderStatus.SHIPPED];
+    const topCouponsRaw = await this.ordersRepo
+      .createQueryBuilder('o')
+      .select('o.couponCode', 'code')
+      .addSelect('COUNT(o.id)::int', 'uses')
+      .addSelect('COALESCE(SUM(o.total - o.discountAmount), 0)::numeric', 'revenue')
+      .where('o.couponCode IS NOT NULL')
+      .andWhere('o.status IN (:...statuses)', { statuses: validStatuses })
+      .groupBy('o.couponCode')
+      .orderBy('revenue', 'DESC')
       .limit(5)
-      .getMany();
+      .getRawMany<{ code: string; uses: string; revenue: string }>();
 
     // Ultimi 5 coupon creati
     const recentCoupons = await this.couponsRepo.find({
@@ -523,7 +529,11 @@ export class CouponsAdminService {
       activeCoupons,
       totalUses: Number(usageStats?.totalUses ?? 0),
       totalDiscount: Math.round(Number(discountStats?.totalDiscount ?? 0) * 100) / 100,
-      topCoupons: topCoupons.map(c => ({ code: c.code, uses: c.usedCount, revenue: 0 })),
+      topCoupons: topCouponsRaw.map(row => ({
+        code: row.code,
+        uses: Number(row.uses),
+        revenue: Math.round(Number(row.revenue) * 100) / 100,
+      })),
       recentCoupons: recentCoupons.map(c => this.toResponseDto(c)),
     };
   }

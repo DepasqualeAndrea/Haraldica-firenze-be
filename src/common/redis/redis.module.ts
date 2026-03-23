@@ -16,6 +16,7 @@ import { RedisService } from './redis.service';
           port: redisConfig.port,
           password: redisConfig.password,
           db: redisConfig.db,
+          tls: redisConfig.tls,
           keyPrefix: redisConfig.keyPrefix,
           retryStrategy: redisConfig.retryStrategy,
           maxRetriesPerRequest: redisConfig.maxRetriesPerRequest,
@@ -29,9 +30,8 @@ import { RedisService } from './redis.service';
           console.log('✅ Redis connected successfully');
         });
 
-        client.on('error', () => {
-          // Silently ignore Redis errors in development
-          // Redis is optional and not required for the app to work
+        client.on('error', (_err) => {
+          // Redis è opzionale: il guard usa fail-open quando Redis è down
         });
 
         client.on('ready', () => {

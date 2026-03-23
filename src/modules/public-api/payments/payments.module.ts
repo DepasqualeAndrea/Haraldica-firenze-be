@@ -23,6 +23,7 @@ import { UsersModule } from '../users/users.module';
 import { ProductsPublicModule } from '../products/products-public.module';
 import { ShipmentsModule } from '../brt/shipments/shipments.module';
 import { AuthModule } from '../auth/auth.module';
+import { CouponsAdminModule } from 'src/modules/admin-api/coupons/coupons.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { AuthModule } from '../auth/auth.module';
     forwardRef(() => OrdersModule),
     forwardRef(() => UsersModule),
     forwardRef(() => AuthModule),
+    CouponsAdminModule,
   ],
   controllers: [PaymentsController, WebhookController],
   providers: [

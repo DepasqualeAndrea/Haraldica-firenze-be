@@ -288,8 +288,10 @@ export class WebhookService {
       const standardShippingCost = shippingConfig?.standardShippingCost || 5.90;
 
       // Calcola shipping: se subtotal >= soglia -> gratis, altrimenti costo standard
-      // Nota: order.subtotal e' gia' calcolato, order.shippingCost potrebbe essere 0 se non calcolato prima
-      const calculatedShippingCost = order.subtotal >= freeShippingThreshold ? 0 : standardShippingCost;
+      // Nota: se il coupon è già stato applicato (es. FREE_SHIPPING), preserva lo shippingCost dell'ordine
+      const calculatedShippingCost = order.couponCode
+        ? order.shippingCost   // già impostato correttamente al momento della creazione ordine
+        : (order.subtotal >= freeShippingThreshold ? 0 : standardShippingCost);
 
       // Salva stripeMetadata completo
       const stripeMetadata = {
@@ -375,6 +377,22 @@ export class WebhookService {
       order.stockReserved = false;
       order.shippingCost = calculatedShippingCost;
       order.taxAmount = taxAmountEur;
+
+      // 8.5 ✅ INCREMENTA usedCount COUPON (atomico, non blocca il flusso)
+      if (order.couponCode) {
+        try {
+          await manager
+            .createQueryBuilder()
+            .update('coupons')
+            .set({ usedCount: () => '"usedCount" + 1' })
+            .where('code = :code', { code: order.couponCode })
+            .execute();
+          this.logger.log(`🏷️ Coupon ${order.couponCode} usedCount incrementato per ordine ${order.orderNumber}`);
+        } catch (couponError) {
+          // Non-fatal: il pagamento è già confermato
+          this.logger.error(`❌ Errore incremento usedCount coupon ${order.couponCode}: ${couponError.message}`);
+        }
+      }
 
       // 9. ✅ AGGIORNA STATISTICHE UTENTE
       if (order.user) {
