@@ -70,6 +70,7 @@ async function bootstrap() {
       },
     } : false,
     crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
     hsts: {
       maxAge: 31536000, // 1 year
       includeSubDomains: true,
